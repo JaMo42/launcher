@@ -13,7 +13,9 @@ use std::{
   ffi::c_void,
   sync::{mpsc::Sender, Arc, Mutex},
 };
-use x11::xlib::{AllocNone, Button4, Button5, ButtonPressMask, TrueColor, XButtonPressedEvent};
+use x11::xlib::{
+  AllocNone, Button4, Button5, ButtonPressMask, KeyPressMask, TrueColor, XButtonPressedEvent,
+};
 
 pub mod colors {
   use crate::draw::Color;
@@ -91,9 +93,10 @@ impl UI {
       .attributes (|attributes| {
         attributes
           .background_pixel (colors::BACKGROUND.pack ())
-          //.override_redirect (true)
+          .override_redirect (!cfg! (debug_assertions))
           .colormap (colormap)
-          .border_pixel (0);
+          .border_pixel (0)
+          .event_mask (KeyPressMask);
       })
       .visual (visual_info.visual)
       .depth (visual_info.depth)
