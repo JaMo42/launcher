@@ -143,4 +143,11 @@ impl History {
     let entry = self.entries.remove (id).unwrap ();
     self.entries.push_front (entry);
   }
+
+  pub fn delete (&mut self, id: usize, cache: &DesktopEntryCache) {
+    if let Entry::DesktopEntry (file_name) = self.entries.remove (id).unwrap () {
+      let id = cache.find_file (&file_name).unwrap ();
+      self.desktop_ids.remove (&id).unwrap ();
+    }
+  }
 }

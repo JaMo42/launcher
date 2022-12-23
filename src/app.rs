@@ -28,6 +28,7 @@ pub enum Signal {
   SwapFocus,
   Quit,
   Commit (usize),
+  DeleteEntry (usize),
 }
 
 pub fn send_signal (display: &Display, sender: &Sender<Signal>, signal: Signal) {
@@ -98,6 +99,8 @@ impl App {
               continue;
             }
             if text.is_empty () {
+              self.search_text.clear ();
+              self.search_results.clear ();
               if self.history.is_empty () {
                 self.ui.list_view.set_items::<SearchMatch> (&[], "");
               } else {
@@ -148,6 +151,13 @@ impl App {
                 );
               }
             }
+          }
+          Signal::DeleteEntry (id) => {
+            if self.search_results.is_empty () && self.search_text.is_empty () {
+              self.history.delete (id, self.cache.lock ().unwrap ().borrow ());
+            }
+            self.ui.list_view.set_items (self.history.entries (), "");
+            self.ui.list_view.draw ();
           }
         }
         continue;

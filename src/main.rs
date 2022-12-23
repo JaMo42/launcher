@@ -1,5 +1,4 @@
 use cache::DesktopEntryCache;
-use search::sort_search_results;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::Read;

@@ -153,10 +153,6 @@ impl SearchMatch {
     &self.match_
   }
 
-  pub fn score (&self) -> f64 {
-    self.score
-  }
-
   fn name (&self) -> &str {
     match &self.match_ {
       SearchMatchKind::PathEntry (path) => path.file_name ().unwrap ().to_str ().unwrap (),

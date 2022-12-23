@@ -23,7 +23,7 @@ pub struct Item {
 }
 
 pub trait Render {
-  fn icon (&self, cache: &DesktopEntryCache) -> Option<Svg> {
+  fn icon (&self, _cache: &DesktopEntryCache) -> Option<Svg> {
     None
   }
 
@@ -306,6 +306,15 @@ impl ListView {
       ),
       Key::Escape => send_signal (&self.display, &self.signal_sender, Signal::Quit),
       Key::Tab => send_signal (&self.display, &self.signal_sender, Signal::SwapFocus),
+      Key::Delete => {
+        if !self.is_empty () {
+          send_signal (
+            &self.display,
+            &self.signal_sender,
+            Signal::DeleteEntry (self.selected),
+          );
+        }
+      }
       _ => {}
     }
   }
