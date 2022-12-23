@@ -126,10 +126,10 @@ pub struct DesktopEntryCache {
 }
 
 impl DesktopEntryCache {
-  pub fn new (locale: Option<String>) -> Self {
+  pub fn new (locale: &Option<String>) -> Self {
     Self {
       entries: Vec::with_capacity (128),
-      locale,
+      locale: locale.clone (),
       error: None,
     }
   }

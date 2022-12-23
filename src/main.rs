@@ -82,7 +82,7 @@ fn _main () {
 
 fn main () {
   let config = Config::load ();
-  let cache = Arc::new (Mutex::new (DesktopEntryCache::new (None)));
+  let cache = Arc::new (Mutex::new (DesktopEntryCache::new (&config.locale)));
   {
     let mut cache = cache.lock ().unwrap ();
     cache.rebuild ();
