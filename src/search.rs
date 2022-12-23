@@ -53,10 +53,9 @@ pub enum SearchMatchKind {
   PathEntry (PathBuf),
 }
 
-// TODO: make non-pub
 pub struct SearchMatch {
-  pub match_: SearchMatchKind,
-  pub score: f64,
+  match_: SearchMatchKind,
+  score: f64,
 }
 
 fn highlight_match (match_str: &str, search: &str) -> String {
@@ -189,7 +188,7 @@ fn path_entry_score (item: &str, target: &str) -> Option<f64> {
   }
 }
 
-fn search_path (name: String, writer: Sender<Option<SearchMatch>>) {
+fn search_path (name: String, sender: Sender<Option<SearchMatch>>) {
   let paths = std::env::var ("PATH").unwrap ();
   for path in paths.split (':') {
     if let Ok (dir) = std::fs::read_dir (path) {
@@ -200,7 +199,7 @@ fn search_path (name: String, writer: Sender<Option<SearchMatch>>) {
           let entry_name = entry.file_name ().to_str ().unwrap ().to_lowercase ();
           if let Some (score) = path_entry_score (&entry_name, &name) {
             if score >= SIMILARITY_THRESHHOLD {
-              writer
+              sender
                 .send (Some (SearchMatch {
                   match_: SearchMatchKind::PathEntry (entry.path ()),
                   score: score * scores::PATH_WEIGHT,
@@ -212,7 +211,7 @@ fn search_path (name: String, writer: Sender<Option<SearchMatch>>) {
       }
     }
   }
-  send_finish (writer);
+  send_finish (sender);
 }
 
 fn get_field_scale (field: MatchField) -> f64 {
@@ -234,7 +233,7 @@ fn desktop_entry_score (field: MatchField) -> f64 {
 
 fn search_desktop_entries (
   name: String,
-  writer: Sender<Option<SearchMatch>>,
+  sender: Sender<Option<SearchMatch>>,
   cache: Arc<Mutex<DesktopEntryCache>>,
   previous: Option<Vec<SearchMatch>>,
 ) {
@@ -263,7 +262,7 @@ fn search_desktop_entries (
     } else {
       Some (matched_field.to_owned ())
     };
-    writer
+    sender
       .send (Some (SearchMatch {
         match_: SearchMatchKind::DeskopEntry (DesktopEntryData {
           id: match_.id,
@@ -274,7 +273,7 @@ fn search_desktop_entries (
       }))
       .ok ();
   }
-  send_finish (writer);
+  send_finish (sender);
 }
 
 pub fn search (
@@ -282,14 +281,14 @@ pub fn search (
   cache: Arc<Mutex<DesktopEntryCache>>,
   previous: Option<Vec<SearchMatch>>,
 ) -> Vec<SearchMatch> {
-  let (writer, reader) = channel ();
+  let (sender, receiver) = channel ();
   let mut results: Vec<SearchMatch> = Vec::new ();
   // Number of running search functions
   let mut running = 0;
   macro_rules! begin {
     ($function:ident $(, $opt:expr)*) => {{
       let my_name = name.to_lowercase ();
-      let my_writer = writer.clone ();
+      let my_writer = sender.clone ();
       thread::spawn (|| $function (my_name, my_writer, $($opt),*));
       running += 1;
     }}
@@ -297,7 +296,7 @@ pub fn search (
   begin! (search_path);
   begin! (search_desktop_entries, cache, previous);
   while running != 0 {
-    match reader.recv () {
+    match receiver.recv () {
       Ok (result_or_finish_token) => {
         if let Some (result) = result_or_finish_token {
           results.push (result);

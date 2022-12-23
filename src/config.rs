@@ -12,6 +12,7 @@ pub struct ParsedConfig {
   list_font: Option<String>,
   list_empty_font: Option<String>,
   icon_theme: Option<String>,
+  scroll_speed: Option<i32>,
 }
 
 #[derive(Clone)]
@@ -23,6 +24,7 @@ pub struct Config {
   pub entry_font: String,
   pub list_font: String,
   pub list_empty_font: String,
+  pub scroll_speed: i32,
 }
 
 impl Config {
@@ -50,6 +52,7 @@ impl Config {
       list_empty_font: parsed
         .list_empty_font
         .unwrap_or_else (|| "sans 48".to_string ()),
+      scroll_speed: parsed.scroll_speed.unwrap_or (10),
     }
   }
 }

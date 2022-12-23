@@ -16,6 +16,8 @@ use std::{
 };
 use x11::xlib::{Button1, Button4, Button5, Colormap, XButtonPressedEvent, XVisualInfo};
 
+const CAPACITY: u32 = 100;
+
 pub struct Item {
   icon: Option<Svg>,
   markup_text: String,
@@ -95,6 +97,7 @@ pub struct ListView {
   search: String,
   empty_screen: DrawingContext,
   cache: Arc<Mutex<DesktopEntryCache>>,
+  scroll_speed: i32,
 }
 
 impl ListView {
@@ -121,7 +124,7 @@ impl ListView {
     let mut dc = DrawingContext::create (
       display,
       layout.window.width,
-      layout.item_height * 100,
+      layout.item_height * CAPACITY,
       visual_info,
     );
     dc.set_font (&FontDescription::from_string (&config.list_font));
@@ -147,6 +150,7 @@ impl ListView {
       search: String::new (),
       empty_screen,
       cache,
+      scroll_speed: config.scroll_speed,
     }
   }
 
@@ -172,7 +176,10 @@ impl ListView {
     }
     let visible = (self.layout.window.height / self.layout.item_height) as i32;
     self.max_scroll_offset = (self.items.len () as i32 - visible) * self.layout.item_height as i32;
-    self.max_scroll_offset = self.max_scroll_offset.max (0);
+    self.max_scroll_offset = self.max_scroll_offset.clamp (
+      0,
+      (CAPACITY * self.layout.item_height - self.layout.window.height) as i32,
+    );
     self.dc.fill (colors::BACKGROUND);
     self.search = search.to_string ();
     // TODO: if previously selected is in new list, keep it selected
@@ -262,9 +269,9 @@ impl ListView {
 
   fn change_selected (&mut self, to: usize) {
     let before = self.selected;
-    self.selected = to;
+    self.selected = to.min (CAPACITY as usize - 1);
     self.draw_item (before, true);
-    self.draw_item (to, true);
+    self.draw_item (self.selected, true);
     self.click_item = usize::MAX;
   }
 
@@ -336,7 +343,7 @@ impl ListView {
     #[allow(non_upper_case_globals)]
     match event.button {
       MOUSE_WHEEL_UP => {
-        self.scroll -= 10;
+        self.scroll -= self.scroll_speed;
         if self.scroll < 0 {
           self.scroll = 0;
         }
@@ -346,7 +353,7 @@ impl ListView {
         }
       }
       MOUSE_WHEEL_DOWN => {
-        self.scroll += 10;
+        self.scroll += self.scroll_speed;
         // TODO: which one?
         //if self.scroll >= self.max_scroll_offset {
         //  self.scroll = self.max_scroll_offset - 1;
