@@ -33,7 +33,7 @@ mod scores {
   pub const PATH_WEIGHT: f64 = 1.0;
 
   // Match kind weights
-  pub const EXACT_BASE: f64 = 2.0;
+  pub const EXACT_BASE: f64 = 1.2;
   // MatchKind::Similar uses the similarity (in range [0:1]) as base.
 
   /// Two scores with a delta less than or equal to this are considered to be equal.

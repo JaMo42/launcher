@@ -154,7 +154,9 @@ impl App {
           }
           Signal::DeleteEntry (id) => {
             if self.search_results.is_empty () && self.search_text.is_empty () {
-              self.history.delete (id, self.cache.lock ().unwrap ().borrow ());
+              self
+                .history
+                .delete (id, self.cache.lock ().unwrap ().borrow ());
             }
             self.ui.list_view.set_items (self.history.entries (), "");
             self.ui.list_view.draw ();
@@ -181,6 +183,7 @@ impl App {
         _ => continue,
       }
     }
+    self.history.store ();
   }
 
   fn get_exec (&mut self, id: usize) -> Option<String> {
@@ -218,7 +221,6 @@ impl App {
 
 impl Drop for App {
   fn drop (&mut self) {
-    self.history.store ();
     self.display.close ();
   }
 }
