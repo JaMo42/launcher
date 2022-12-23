@@ -25,6 +25,28 @@ fn get_locale () -> Option<(String, Option<String>, Option<String>)> {
   Some ((locale, country, modifier))
 }
 
+fn expand_exec (
+  exec: &str,
+  file_name: &str,
+  name: &str,
+  translated_name: Option<&str>,
+  icon: Option<&str>,
+) -> String {
+  // https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html#exec-variables
+  let icon = icon
+    .map (|i| format! ("--icon {i}"))
+    .unwrap_or_else (|| String::new ());
+  let file_location = format! ("/usr/share/applications/{}", file_name);
+  exec
+    .replace ("%f", "")
+    .replace ("%F", "")
+    .replace ("%u", "")
+    .replace ("%U", "")
+    .replace ("%i", &icon)
+    .replace ("%c", translated_name.unwrap_or (name))
+    .replace ("%k", &file_location)
+}
+
 #[derive(Copy, Clone)]
 pub enum MatchField {
   Name (MatchKind),
@@ -95,15 +117,23 @@ impl Entry {
       eprintln! ("No suitable name found in {}.", file_name);
       None
     } else {
+      let icon = de.icon ();
+      let exec = expand_exec (
+        // Already checked this exists in `DesktopEntryCache::rebuild`.
+        de.exec ().unwrap (),
+        &file_name,
+        name.as_ref ().unwrap (),
+        localized_name.as_ref ().map (|n| n.as_str ()),
+        icon,
+      );
       Some (Self {
         name: name.unwrap (),
         localized_name,
         generic_name,
         localized_generic_name,
         file_name,
-        // Already checked this exists in `DesktopEntryCache::rebuild`.
-        exec: de.exec ().unwrap ().to_string (),
-        icon: de.icon ().and_then (|s| find_icon (s)),
+        exec,
+        icon: icon.and_then (|s| find_icon (s)),
       })
     }
   }
