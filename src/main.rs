@@ -1,4 +1,5 @@
 use cache::DesktopEntryCache;
+use std::borrow::BorrowMut;
 use std::io::Read;
 use std::os::unix::net::UnixListener;
 use std::process::Command;
@@ -84,6 +85,7 @@ fn main () {
               }
               common::OPCODE_REBUILD_CACHE => {
                 println! ("launcher-server: rebuild cache");
+                cache.lock ().unwrap ().borrow_mut ().rebuild ();
               }
               _ => {
                 eprintln! ("launcher-server: error: invalid operation: {}", opcode);
