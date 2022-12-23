@@ -35,12 +35,6 @@ impl Window {
     self.handle
   }
 
-  //pub fn raise (&self) {
-  //  unsafe {
-  //    XRaiseWindow (self.display (), self.handle);
-  //  }
-  //}
-
   pub fn clear (&self) {
     unsafe {
       XClearWindow (self.display (), self.handle);
@@ -62,24 +56,6 @@ impl Window {
   pub fn reparent<W: ToXWindow> (&self, parent: W, x: c_int, y: c_int) {
     unsafe {
       XReparentWindow (self.display (), self.handle, parent.to_xwindow (), x, y);
-    }
-  }
-
-  pub fn move_and_resize (&self, x: i32, y: i32, w: u32, h: u32) {
-    unsafe {
-      XMoveResizeWindow (self.display (), self.handle, x, y, w, h);
-    }
-  }
-
-  pub fn send_event (&self, mut event: XEvent, mask: i64) -> bool {
-    unsafe {
-      XSendEvent (
-        self.display (),
-        self.handle,
-        FALSE,
-        mask,
-        &mut event as *mut XEvent,
-      ) != 0
     }
   }
 

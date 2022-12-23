@@ -1,5 +1,4 @@
 use super::{window::ToXWindow, *};
-use std::ffi::CString;
 
 #[derive(Copy, Clone)]
 pub struct Display {
@@ -85,50 +84,10 @@ impl Display {
     }
   }
 
-  pub fn mask_event (&self, mask: i64, event_out: &mut XEvent) {
-    unsafe {
-      XMaskEvent (self.connection, mask, event_out);
-    }
-  }
-
   pub fn push_event (&self, mut event: XEvent) {
     unsafe {
       XPutBackEvent (self.connection, &mut event);
     }
-  }
-
-  pub fn set_input_focus<W: ToXWindow> (&self, window: W) {
-    unsafe {
-      XSetInputFocus (
-        self.connection,
-        window.to_xwindow (),
-        RevertToParent,
-        CurrentTime,
-      );
-    }
-  }
-
-  pub fn intern_atom (&self, name: &str) -> Atom {
-    unsafe {
-      let cstr = CString::new (name).unwrap ();
-      XInternAtom (self.connection, cstr.as_ptr (), FALSE)
-    }
-  }
-
-  pub fn get_atom_name (&self, atom: Atom) -> String {
-    unsafe {
-      CStr::from_ptr (XGetAtomName (self.connection, atom))
-        .to_str ()
-        .unwrap ()
-        .to_owned ()
-    }
-  }
-
-  pub fn get_selection_by_name (&self, name: &str) -> Window {
-    let selection = self.intern_atom (name);
-    Window::from_handle (self, unsafe {
-      XGetSelectionOwner (self.connection, selection)
-    })
   }
 
   pub fn match_visual_info (&self, depth: i32, class: i32) -> Option<XVisualInfo> {
