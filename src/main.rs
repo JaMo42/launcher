@@ -42,9 +42,8 @@ fn main () {
     Command::new ("unlink")
       .arg (common::SOCKET_PATH)
       .spawn ()
-      .unwrap ()
-      .wait ()
-      .unwrap ();
+      .map (|mut p| p.wait ().ok ())
+      .ok ();
   }
   let listener = match UnixListener::bind (common::SOCKET_PATH) {
     Ok (listener) => listener,

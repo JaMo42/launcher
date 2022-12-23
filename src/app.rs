@@ -56,9 +56,7 @@ impl App {
   pub fn new (display: Display, cache: Arc<Mutex<DesktopEntryCache>>, config: Config) -> Self {
     let history = History::load (cache.lock ().unwrap ().borrow ());
     let (signal_sender, signal_receiver) = channel ();
-    println! ("App 1");
     let ui = UI::new (&display, signal_sender, cache.clone (), &config);
-    println! ("App 2");
     let ic = input::init (&display, &ui.main_window);
     Self {
       display,
