@@ -72,7 +72,7 @@ fn highlight_match (match_str: &str, search: &str) -> String {
     String::with_capacity (match_str.len () + 30 * search.chars ().count () * 80 / 100);
   let mut match_chars = match_str.chars ();
   let mut search_chars = search.chars ();
-  let mut s = search_chars.next ().unwrap ();
+  let mut s = search_chars.next ().unwrap ().to_ascii_lowercase ();
   let mut is_highlight = false;
   loop {
     if let Some (c) = match_chars.next () {
