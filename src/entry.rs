@@ -1,4 +1,5 @@
 use crate::app::{send_signal, Signal};
+use crate::config::Config;
 use crate::draw::DrawingContext;
 use crate::input::{Key, KeyEvent};
 use crate::layout::{EntryLayout, Rectangle};
@@ -30,6 +31,7 @@ impl Entry {
     layout: EntryLayout,
     visual_info: &XVisualInfo,
     colormap: Colormap,
+    config: &Config,
   ) -> Self {
     let window = Window::builder (display)
       .size (layout.window.width, layout.window.height)
@@ -48,7 +50,7 @@ impl Entry {
       layout.window.height,
       visual_info,
     );
-    dc.set_font (&FontDescription::from_string ("SF Pro Text 24"));
+    dc.set_font (&FontDescription::from_string (&config.entry_font));
     Self {
       window,
       text: Vec::new (),

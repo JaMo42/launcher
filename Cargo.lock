@@ -880,6 +880,7 @@ dependencies = [
  "ron",
  "serde",
  "strsim",
+ "toml",
  "x11",
 ]
 

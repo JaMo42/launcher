@@ -14,17 +14,18 @@ name = "common"
 path = "src/lib/common.rs"
 
 [dependencies]
-cairo-sys-rs = "0.16.3"
 cairo-rs = { version = "0.16.3", features = ["xlib"] }
+cairo-sys-rs = "0.16.3"
 clap = { version = "4.0.23", features = ["derive"] }
 freedesktop-desktop-entry = "0.5.0"
-pango = "0.16.3"
-pangocairo = "0.16.3"
-strsim = "0.10.0"
-x11 = "2.19.1"
-librsvg = { version="2.55.1", git="https://gitlab.gnome.org/GNOME/librsvg" }
 gio = "0.16.7"
 glib = "0.16.7"
 libc = "0.2.138"
-serde = { version = "1.0.151", features = ["derive"] }
+librsvg = { version="2.55.1", git="https://gitlab.gnome.org/GNOME/librsvg" }
+pango = "0.16.3"
+pangocairo = "0.16.3"
 ron = "0.8.0"
+serde = { version = "1.0.151", features = ["derive"] }
+strsim = "0.10.0"
+toml = "0.5.10"
+x11 = "2.19.1"

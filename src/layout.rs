@@ -1,5 +1,4 @@
-use crate::list_view::ITEM_HEIGHT;
-use pango::FontDescription;
+use crate::config::Config;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Rectangle {
@@ -163,27 +162,29 @@ pub struct ListViewLayout {
   pub window: Rectangle,
   pub icon: Rectangle,
   pub text: Rectangle,
+  pub item_height: u32,
 }
 
 impl ListViewLayout {
-  fn new (mut list_view: LayoutBuilder) -> Self {
+  fn new (mut list_view: LayoutBuilder, config: &Config) -> Self {
     let reparent = list_view.make_origin ();
-    let mut item = list_view.add_top_child (ITEM_HEIGHT, 0);
+    let mut item = list_view.add_top_child (config.list_item_height, 0);
     item.available.y += 4;
     item.available.height -= 8;
-    let icon = item.add_left_child (ITEM_HEIGHT, 4);
+    let icon = item.add_left_child (config.list_item_height, 4);
     let text = item.available ();
     Self {
       reparent,
       window: list_view.into_rect (),
       icon: icon.into_rect (),
       text: text.into_rect (),
+      item_height: config.list_item_height,
     }
   }
 
   pub fn get_item_rects (&self, idx: usize) -> (Rectangle, Rectangle, Rectangle) {
-    let y = (idx as u32 * ITEM_HEIGHT) as i32;
-    let background = Rectangle::new (0, y, self.window.width, ITEM_HEIGHT);
+    let y = (idx as u32 * self.item_height) as i32;
+    let background = Rectangle::new (0, y, self.window.width, self.item_height);
     let mut icon = self.icon;
     icon.y += y;
     let mut text = self.text;
@@ -193,20 +194,21 @@ impl ListViewLayout {
 }
 
 impl Layout {
-  pub fn new (screen_width: u32, screen_height: u32, _scale: f64) -> Self {
+  pub fn new (screen_width: u32, screen_height: u32, config: &Config) -> Self {
     let mut window = LayoutBuilder::new (Rectangle {
       x: 0,
       y: 0,
-      width: screen_width / 3,
-      height: screen_height / 3,
+      width: screen_width / 2,
+      height: screen_height / 2,
     });
     window.margin (10);
-    let entry = window.add_top_child (48, 10);
+    let entry = window.add_top_child (config.entry_height, 10);
     let list_view = window.available ();
     let mut entry = EntryLayout::new (entry);
-    let mut list_view = ListViewLayout::new (list_view);
+    let mut list_view = ListViewLayout::new (list_view, config);
     entry.icon.scale (70);
-    let list_view_height = list_view.window.height / ITEM_HEIGHT * ITEM_HEIGHT;
+    let list_view_height =
+      list_view.window.height / config.list_item_height * config.list_item_height;
     window.total.height -= list_view.window.height - list_view_height;
     list_view.window.height = list_view_height;
     Self {

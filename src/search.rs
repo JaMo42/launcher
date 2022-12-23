@@ -67,9 +67,11 @@ fn highlight_match (match_str: &str, search: &str) -> String {
       BEGIN_HIGHLIGHT = format! ("<span color=\"{}\">", colors::LIST_MATCH_HIGHLIGHT);
     }
   }
-  // Assume 80% of chars in search resulting in this: `<span color="#RRGGBB">X</span>`
+  // Assume 30% of chars in search resulting in this: `<span color="#RRGGBB">X</span>`
+  // The percentage is rather low due the algorithm used and the fact that the
+  // span tags are only added if neccessary.
   let mut result =
-    String::with_capacity (match_str.len () + 30 * search.chars ().count () * 80 / 100);
+    String::with_capacity (match_str.len () + 30 * search.chars ().count () * 30 / 100);
   let mut match_chars = match_str.chars ();
   let mut search_chars = search.chars ();
   let mut s = search_chars.next ().unwrap ().to_ascii_lowercase ();

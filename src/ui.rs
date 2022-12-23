@@ -1,6 +1,7 @@
 use crate::{
   app::{send_signal, Signal},
   cache::DesktopEntryCache,
+  config::Config,
   draw::DrawingContext,
   entry::Entry,
   input::KeyEvent,
@@ -73,9 +74,10 @@ impl UI {
     display: &Display,
     signal_sender: Sender<Signal>,
     cache: Arc<Mutex<DesktopEntryCache>>,
+    config: &Config,
   ) -> Self {
     let screen_size = main_screen_size (&display);
-    let layout = Layout::new (screen_size.0, screen_size.1, 1.0);
+    let layout = Layout::new (screen_size.0, screen_size.1, config);
     let width = layout.window.width;
     let height = layout.window.height;
     let visual_info = display.match_visual_info (32, TrueColor).unwrap ();
@@ -112,6 +114,7 @@ impl UI {
       layout.entry,
       &visual_info,
       colormap,
+      config,
     );
     entry.window.reparent (main_window, p.0, p.1);
 
@@ -129,6 +132,7 @@ impl UI {
       &visual_info,
       colormap,
       cache,
+      config,
     );
     list_view.window.reparent (main_window, p.0, p.1);
 

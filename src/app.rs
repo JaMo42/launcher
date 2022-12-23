@@ -1,5 +1,6 @@
 use crate::{
   cache::DesktopEntryCache,
+  config::Config,
   history::History,
   input::{self, InputContext},
   search::{self, sort_search_results, SearchMatch, SearchMatchKind},
@@ -9,10 +10,7 @@ use crate::{
 };
 use std::{
   borrow::Borrow,
-  cell::RefCell,
-  collections::HashMap,
   ops::Deref,
-  rc::Rc,
   sync::{
     mpsc::{channel, Receiver, Sender},
     Arc, Mutex,
@@ -55,14 +53,12 @@ pub struct App {
 }
 
 impl App {
-  pub fn new (
-    cache: Arc<Mutex<DesktopEntryCache>>,
-    _history: Rc<RefCell<HashMap<usize, usize>>>,
-  ) -> Self {
+  pub fn new (cache: Arc<Mutex<DesktopEntryCache>>) -> Self {
+    let config = Config::load ();
     let history = History::load (cache.lock ().unwrap ().borrow ());
     let display = Display::connect (None);
     let (signal_sender, signal_receiver) = channel ();
-    let ui = UI::new (&display, signal_sender, cache.clone ());
+    let ui = UI::new (&display, signal_sender, cache.clone (), &config);
     let ic = input::init (&display, &ui.main_window);
     Self {
       display,

@@ -1,13 +1,11 @@
 use cache::DesktopEntryCache;
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::io::Read;
 use std::os::unix::net::UnixListener;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 mod app;
 mod cache;
+mod config;
 mod draw;
 mod entry;
 mod history;
@@ -89,9 +87,8 @@ fn main () {
       eprintln! ("Failed to build desktop entry cache: {error}");
     }
   }
-  let history = Rc::new (RefCell::new (HashMap::new ()));
 
   input::set_locale_info ();
-  App::new (cache.clone (), history.clone ()).run ();
+  App::new (cache.clone ()).run ();
   println! ("Good bye");
 }

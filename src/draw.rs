@@ -97,7 +97,7 @@ impl DrawingContext {
     } else {
       self.layout.set_text (text);
     }
-    TextBuilder { dc: self, rect }
+    TextBuilder::new (self, rect)
   }
 
   pub fn layout (&self) -> &Layout {
@@ -415,7 +415,7 @@ impl<'a> ShapeBuilder<'a> {
   fn fill (&self) {
     if let Some ((stroke_width, ref stroke_color)) = self.stroke {
       self.context.fill_preserve ().unwrap ();
-      let (r, g, b, a) = stroke_color.float_parts ();
+      let (r, g, b, _a) = stroke_color.float_parts ();
       self.context.set_source_rgb (r, g, b);
       self.context.set_line_width (stroke_width as f64);
       self.context.stroke ().unwrap ();

@@ -1,6 +1,7 @@
 use crate::{
   app::{send_signal, Signal},
   cache::DesktopEntryCache,
+  config::Config,
   draw::DrawingContext,
   input::{Key, KeyEvent},
   layout::{ListViewLayout, Rectangle},
@@ -14,8 +15,6 @@ use std::{
   sync::{mpsc::Sender, Arc, Mutex},
 };
 use x11::xlib::{Button1, Button4, Button5, Colormap, XButtonPressedEvent, XVisualInfo};
-
-pub const ITEM_HEIGHT: u32 = 44;
 
 pub struct Item {
   icon: Option<Svg>,
@@ -62,24 +61,17 @@ impl LazyItem {
   }
 }
 
-const fn position_to_item_index (offset: i32) -> usize {
-  (offset as u32 / ITEM_HEIGHT) as usize
-}
-
-const fn item_index_to_position (idx: usize) -> i32 {
-  (idx as u32 * ITEM_HEIGHT) as i32
-}
-
 fn create_empty_screen (
   display: &Display,
   width: u32,
   height: u32,
   visual_info: &XVisualInfo,
+  font: &str,
 ) -> DrawingContext {
   let mut empty_screen = DrawingContext::create (display, width, height, visual_info);
   empty_screen.fill (colors::BACKGROUND);
   empty_screen.set_color (colors::TEXT);
-  empty_screen.set_font (&FontDescription::from_string ("SF Pro Display 48"));
+  empty_screen.set_font (&FontDescription::from_string (font));
   empty_screen
     .text ("No results", Rectangle::new (0, 0, width, height), false)
     .center_width ()
@@ -113,6 +105,7 @@ impl ListView {
     visual_info: &XVisualInfo,
     colormap: Colormap,
     cache: Arc<Mutex<DesktopEntryCache>>,
+    config: &Config,
   ) -> Self {
     let window = Window::builder (display)
       .size (layout.window.width, layout.window.height)
@@ -125,14 +118,19 @@ impl ListView {
       .visual (visual_info.visual)
       .depth (visual_info.depth)
       .build ();
-    let mut dc =
-      DrawingContext::create (display, layout.window.width, ITEM_HEIGHT * 100, visual_info);
-    dc.set_font (&FontDescription::from_string ("SF Pro Text 20"));
+    let mut dc = DrawingContext::create (
+      display,
+      layout.window.width,
+      layout.item_height * 100,
+      visual_info,
+    );
+    dc.set_font (&FontDescription::from_string (&config.list_font));
     let empty_screen = create_empty_screen (
       display,
       layout.window.width,
       layout.window.height,
       visual_info,
+      &config.list_empty_font,
     );
     Self {
       window,
@@ -152,6 +150,14 @@ impl ListView {
     }
   }
 
+  fn position_to_item_index (&self, offset: i32) -> usize {
+    (offset as u32 / self.layout.item_height) as usize
+  }
+
+  fn item_index_to_position (&self, idx: usize) -> i32 {
+    (idx as u32 * self.layout.item_height) as i32
+  }
+
   pub fn set_items<T: Render + 'static> (&mut self, items: &[T], search: &str) {
     self.items = items
       .iter ()
@@ -164,8 +170,8 @@ impl ListView {
       self.draw ();
       return;
     }
-    let visible = (self.layout.window.height / ITEM_HEIGHT) as i32;
-    self.max_scroll_offset = (self.items.len () as i32 - visible) * ITEM_HEIGHT as i32;
+    let visible = (self.layout.window.height / self.layout.item_height) as i32;
+    self.max_scroll_offset = (self.items.len () as i32 - visible) * self.layout.item_height as i32;
     self.max_scroll_offset = self.max_scroll_offset.max (0);
     self.dc.fill (colors::BACKGROUND);
     self.search = search.to_string ();
@@ -217,10 +223,10 @@ impl ListView {
       );
       return;
     }
-    for y in
-      (self.scroll..(self.scroll + self.layout.window.height as i32)).step_by (ITEM_HEIGHT as usize)
+    for y in (self.scroll..(self.scroll + self.layout.window.height as i32))
+      .step_by (self.layout.item_height as usize)
     {
-      let idx = position_to_item_index (y);
+      let idx = self.position_to_item_index (y);
       if idx == self.items.len () {
         break;
       }
@@ -233,8 +239,8 @@ impl ListView {
 
   /// Moves the view so the selection is visible
   fn adjust_view (&mut self) {
-    let sel_top = item_index_to_position (self.selected);
-    let sel_bot = item_index_to_position (self.selected + 1);
+    let sel_top = self.item_index_to_position (self.selected);
+    let sel_bot = self.item_index_to_position (self.selected + 1);
     if sel_top < self.scroll {
       self.scroll = sel_top;
     } else if sel_bot >= self.scroll + self.layout.window.height as i32 {
@@ -246,8 +252,8 @@ impl ListView {
 
   /// Moves the selection so it's inside the view
   fn adjust_selection (&mut self) {
-    let min = position_to_item_index (self.scroll);
-    let max = position_to_item_index (self.scroll + self.layout.window.height as i32 - 1);
+    let min = self.position_to_item_index (self.scroll);
+    let max = self.position_to_item_index (self.scroll + self.layout.window.height as i32 - 1);
     let selected = self.selected.clamp (min, max);
     if selected != self.selected {
       self.change_selected (selected);
@@ -354,7 +360,7 @@ impl ListView {
         }
       }
       Button1 => {
-        let click_idx = position_to_item_index (self.scroll + event.y);
+        let click_idx = self.position_to_item_index (self.scroll + event.y);
         if click_idx >= self.items.len () {
           // We may have less items than the widget is high but will allow
           // clicks anywhere on the widget.
