@@ -31,14 +31,8 @@ impl Render for Entry {
       Entry::Path (_) => None,
       Entry::DesktopEntry (file_name) => {
         let id = cache.find_file (file_name).unwrap ();
-        if let Some (icon_name) = &cache.get_entry (id).icon {
-          let path = format! ("/usr/share/icons/Papirus/48x48/apps/{}.svg", icon_name);
-          if std::fs::metadata (&path).is_ok () {
-            Some (Svg::open (&path))
-          } else {
-            println! ("Icon not found: {}", path);
-            None
-          }
+        if let Some (icon_path) = &cache.get_entry (id).icon {
+          Some (Svg::open (icon_path))
         } else {
           None
         }

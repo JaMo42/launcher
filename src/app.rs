@@ -53,8 +53,7 @@ pub struct App {
 }
 
 impl App {
-  pub fn new (cache: Arc<Mutex<DesktopEntryCache>>) -> Self {
-    let config = Config::load ();
+  pub fn new (cache: Arc<Mutex<DesktopEntryCache>>, config: Config) -> Self {
     let history = History::load (cache.lock ().unwrap ().borrow ());
     let display = Display::connect (None);
     let (signal_sender, signal_receiver) = channel ();

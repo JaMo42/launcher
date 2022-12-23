@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+static mut ICON_THEME: String = String::new ();
+
 #[derive(Deserialize, Default)]
 pub struct ParsedConfig {
   window_width_percent: Option<u32>,
@@ -9,7 +11,10 @@ pub struct ParsedConfig {
   entry_font: Option<String>,
   list_font: Option<String>,
   list_empty_font: Option<String>,
+  icon_theme: Option<String>,
 }
+
+#[derive(Clone)]
 pub struct Config {
   pub window_width_percent: u32,
   pub window_height_percent: u32,
@@ -31,6 +36,10 @@ impl Config {
     } else {
       ParsedConfig::default ()
     };
+    unsafe {
+      let theme_name = parsed.icon_theme.unwrap_or_else (|| "Papirus".to_string ());
+      ICON_THEME = find_icon_theme (theme_name);
+    }
     Config {
       window_width_percent: parsed.window_width_percent.unwrap_or (50),
       window_height_percent: parsed.window_height_percent.unwrap_or (50),
@@ -43,4 +52,25 @@ impl Config {
         .unwrap_or_else (|| "sans 48".to_string ()),
     }
   }
+}
+
+fn find_icon_theme (name: String) -> String {
+  let home = std::env::var ("HOME").unwrap ();
+  let directories = [
+    "/usr/share/icons".to_string (),
+    format! ("{}/{}", home, ".local/share/icons"),
+    format! ("{}/{}", home, ".icons"),
+  ];
+  for d in directories {
+    let path = format! ("{}/{}", d, name);
+    if std::fs::metadata (&path).is_ok () {
+      println! ("Found icon theme: {}", path);
+      return path;
+    }
+  }
+  panic! ("Theme not found: {name}");
+}
+
+pub fn icon_search_path () -> &'static str {
+  unsafe { ICON_THEME.as_str () }
 }

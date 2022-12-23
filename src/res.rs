@@ -3,6 +3,8 @@ use gio::{Cancellable, File, MemoryInputStream};
 use glib::Bytes;
 use librsvg::{CairoRenderer, Loader, SvgHandle};
 
+use crate::config::icon_search_path;
+
 pub mod resources {
   pub static SEARCH_ICON: &'static [u8] = include_bytes! ("../res/search.svg");
 }
@@ -43,4 +45,27 @@ impl Svg {
       pattern: None,
     }
   }
+}
+
+pub fn find_icon (name: &str) -> Option<String> {
+  let base = icon_search_path ();
+  let dirs = [
+    "apps",
+    "places",
+    "devices",
+    "actions",
+    "categories",
+    "mimetypes",
+    "status",
+    "emotes",
+    "intl",
+    "emblems",
+  ];
+  for d in dirs {
+    let pathname = format! ("{}/48x48/{}/{}.svg", base, d, name);
+    if std::fs::metadata (&pathname).is_ok () {
+      return Some (pathname);
+    }
+  }
+  None
 }

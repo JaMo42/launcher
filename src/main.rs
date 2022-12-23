@@ -20,6 +20,8 @@ mod x;
 
 use app::App;
 
+use crate::config::Config;
+
 struct CloseSocketOnExit;
 
 impl Drop for CloseSocketOnExit {
@@ -79,6 +81,7 @@ fn _main () {
 }
 
 fn main () {
+  let config = Config::load ();
   let cache = Arc::new (Mutex::new (DesktopEntryCache::new (None)));
   {
     let mut cache = cache.lock ().unwrap ();
@@ -89,6 +92,6 @@ fn main () {
   }
 
   input::set_locale_info ();
-  App::new (cache.clone ()).run ();
+  App::new (cache.clone (), config.clone ()).run ();
   println! ("Good bye");
 }

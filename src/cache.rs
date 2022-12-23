@@ -1,4 +1,7 @@
-use crate::search::{MatchKind, SIMILARITY_THRESHHOLD};
+use crate::{
+  res::find_icon,
+  search::{MatchKind, SIMILARITY_THRESHHOLD},
+};
 use freedesktop_desktop_entry::DesktopEntry;
 
 /// Get the `lang`, `COUNTRY`, and `MODIFIER` parts from `LC_MESSAGES` or `LANG`.
@@ -100,7 +103,7 @@ impl Entry {
         file_name,
         // Already checked this exists in `DesktopEntryCache::rebuild`.
         exec: de.exec ().unwrap ().to_string (),
-        icon: de.icon ().map (|s| s.to_string ()),
+        icon: de.icon ().and_then (|s| find_icon (s)),
       })
     }
   }
