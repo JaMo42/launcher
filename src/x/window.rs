@@ -53,6 +53,12 @@ impl Window {
     }
   }
 
+  pub fn unmap (&self) {
+    unsafe {
+      XUnmapWindow (self.display (), self.handle);
+    }
+  }
+
   pub fn reparent<W: ToXWindow> (&self, parent: W, x: c_int, y: c_int) {
     unsafe {
       XReparentWindow (self.display (), self.handle, parent.to_xwindow (), x, y);

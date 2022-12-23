@@ -270,6 +270,7 @@ impl Entry {
       match event.key {
         Key::Escape | Key::CtrlC => send_signal (&self.display, &self.signal_sender, Signal::Quit),
         Key::Tab | Key::Down => send_signal (&self.display, &self.signal_sender, Signal::SwapFocus),
+        Key::Enter => send_signal (&self.display, &self.signal_sender, Signal::Commit (0)),
         _ => {}
       }
       return;
@@ -377,6 +378,5 @@ impl Entry {
 impl Drop for Entry {
   fn drop (&mut self) {
     self.dc.destroy ();
-    self.window.destroy ();
   }
 }

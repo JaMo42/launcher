@@ -1,7 +1,9 @@
 use cache::DesktopEntryCache;
 use std::io::Read;
 use std::os::unix::net::UnixListener;
+use std::process::Command;
 use std::sync::{Arc, Mutex};
+use x::Display;
 
 mod app;
 mod cache;
@@ -34,15 +36,36 @@ fn close_socket () {
   std::fs::remove_file (common::SOCKET_PATH).unwrap ();
 }
 
-fn _main () {
+fn main () {
+  if std::fs::metadata (common::SOCKET_PATH).is_ok () {
+    eprintln! ("launcher-server: socket file already exists, unlinking it");
+    Command::new ("unlink")
+      .arg (common::SOCKET_PATH)
+      .spawn ()
+      .unwrap ()
+      .wait ()
+      .unwrap ();
+  }
   let listener = match UnixListener::bind (common::SOCKET_PATH) {
     Ok (listener) => listener,
-    Err (_) => {
-      eprintln! ("launcher-server: server already running");
+    Err (error) => {
+      eprintln! ("launcher-server: failed to launch: {error}");
       return;
     }
   };
   let _closer = CloseSocketOnExit;
+  let config = Config::load ();
+  let cache = Arc::new (Mutex::new (DesktopEntryCache::new (&config.locale)));
+  {
+    let mut cache = cache.lock ().unwrap ();
+    cache.rebuild ();
+    if let Some (error) = cache.error () {
+      eprintln! ("Failed to build desktop entry cache: {error}");
+    }
+  }
+  x::init_threads ();
+  input::set_locale_info ();
+  let display = Display::connect (None);
   for stream in listener.incoming () {
     match stream {
       Ok (mut stream) => {
@@ -52,7 +75,8 @@ fn _main () {
           for opcode in data {
             match opcode {
               common::OPCODE_SHOW => {
-                println! ("launcher-server: Hello World");
+                println! ("launcher-server: show");
+                App::new (display, cache.clone (), config.clone ()).run ();
               }
               common::OPCODE_STOP => {
                 println! ("launcher-server: stop");
@@ -78,20 +102,4 @@ fn _main () {
       }
     }
   }
-}
-
-fn main () {
-  let config = Config::load ();
-  let cache = Arc::new (Mutex::new (DesktopEntryCache::new (&config.locale)));
-  {
-    let mut cache = cache.lock ().unwrap ();
-    cache.rebuild ();
-    if let Some (error) = cache.error () {
-      eprintln! ("Failed to build desktop entry cache: {error}");
-    }
-  }
-
-  input::set_locale_info ();
-  App::new (cache.clone (), config.clone ()).run ();
-  println! ("Good bye");
 }

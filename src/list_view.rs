@@ -403,6 +403,5 @@ impl ListView {
 impl Drop for ListView {
   fn drop (&mut self) {
     self.dc.destroy ();
-    self.window.destroy ();
   }
 }

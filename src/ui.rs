@@ -207,6 +207,9 @@ impl UI {
 
 impl Drop for UI {
   fn drop (&mut self) {
+    self.main_window.unmap ();
     self.main_window.destroy ();
+    self.display.sync (true);
+    self.display.flush ();
   }
 }

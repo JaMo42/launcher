@@ -21,3 +21,7 @@ pub use window::Window;
 pub fn lookup_keysym (event: &XKeyEvent) -> KeySym {
   unsafe { XLookupKeysym (event as *const XKeyEvent as *mut XKeyEvent, 0) }
 }
+
+pub fn init_threads () -> Status {
+  unsafe { XInitThreads () }
+}

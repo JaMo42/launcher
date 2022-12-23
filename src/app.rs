@@ -53,11 +53,12 @@ pub struct App {
 }
 
 impl App {
-  pub fn new (cache: Arc<Mutex<DesktopEntryCache>>, config: Config) -> Self {
+  pub fn new (display: Display, cache: Arc<Mutex<DesktopEntryCache>>, config: Config) -> Self {
     let history = History::load (cache.lock ().unwrap ().borrow ());
-    let display = Display::connect (None);
     let (signal_sender, signal_receiver) = channel ();
+    println! ("App 1");
     let ui = UI::new (&display, signal_sender, cache.clone (), &config);
+    println! ("App 2");
     let ic = input::init (&display, &ui.main_window);
     Self {
       display,
@@ -76,6 +77,7 @@ impl App {
       self.ui.list_view.set_items (self.history.entries (), "");
     }
     self.ui.redraw ();
+    self.display.sync (true);
     let mut running = true;
     let mut event: XEvent = unsafe { std::mem::zeroed () };
     while running {
@@ -145,6 +147,7 @@ impl App {
                   self.cache.lock ().unwrap ().borrow (),
                 );
               }
+              running = false;
             }
           }
           Signal::DeleteEntry (id) => {
@@ -211,11 +214,5 @@ impl App {
 
   fn launch (&self, exec: String) {
     launch_orphan (&exec);
-  }
-}
-
-impl Drop for App {
-  fn drop (&mut self) {
-    self.display.close ();
   }
 }

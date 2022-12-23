@@ -222,11 +222,6 @@ impl Color {
       } else {
         scaled_blue as u8
       },
-      //alpha: if scaled_alpha > 255 {
-      //  255
-      //} else {
-      //  scaled_alpha as u8
-      //},
       alpha: self.alpha,
     }
   }

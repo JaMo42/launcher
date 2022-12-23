@@ -111,6 +111,7 @@ impl History {
     for idx in 0..self.entries.len () {
       if self.entries[idx] == entry {
         self.entries.remove (idx);
+        break;
       }
     }
     // Drop oldest if capacity is filled
