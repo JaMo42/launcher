@@ -3,6 +3,10 @@ use crate::{
   search::{MatchKind, SIMILARITY_THRESHHOLD},
 };
 use freedesktop_desktop_entry::DesktopEntry;
+use std::{
+  collections::{hash_map::DefaultHasher, HashSet},
+  hash::{Hash, Hasher},
+};
 
 /// Get the `lang`, `COUNTRY`, and `MODIFIER` parts from `LC_MESSAGES` or `LANG`.
 fn get_locale () -> Option<(String, Option<String>, Option<String>)> {
@@ -28,6 +32,7 @@ fn get_locale () -> Option<(String, Option<String>, Option<String>)> {
 fn expand_exec (
   exec: &str,
   file_name: &str,
+  path: &str,
   name: &str,
   translated_name: Option<&str>,
   icon: Option<&str>,
@@ -36,7 +41,7 @@ fn expand_exec (
   let icon = icon
     .map (|i| format! ("--icon {i}"))
     .unwrap_or_else (|| String::new ());
-  let file_location = format! ("/usr/share/applications/{}", file_name);
+  let file_location = format! ("{}/{}", path, file_name);
   exec
     .replace ("%f", "")
     .replace ("%F", "")
@@ -89,6 +94,7 @@ impl Entry {
     file_name: String,
     de: &DesktopEntry,
     locales: &[String],
+    path: &str,
   ) -> Option<Self> {
     let mut localized_name = None;
     let mut localized_generic_name = None;
@@ -122,6 +128,7 @@ impl Entry {
         // Already checked this exists in `DesktopEntryCache::rebuild`.
         de.exec ().unwrap (),
         &file_name,
+        path,
         name.as_ref ().unwrap (),
         localized_name.as_ref ().map (|n| n.as_str ()),
         icon,
@@ -207,41 +214,66 @@ impl DesktopEntryCache {
       self.entries.clear ();
     }
     let locales = self.get_locales ();
-    let dir = std::fs::read_dir ("/usr/share/applications");
-    if let Err (error) = dir {
-      eprintln! ("Could not read /usr/share/applications: {error}");
-      self.error = Some (error);
-      return;
+    let data_dirs = std::env::var ("XDG_DATA_DIRS")
+      .map (|s| s.split (':').map (|s| s.to_owned ()).collect ())
+      .unwrap_or_else (|_| {
+        vec! [
+          "/usr/share/applications".to_string (),
+          "/usr/local/share/applications".to_string ()
+        ]
+      });
+    for data_dir in data_dirs {
+      let dir_path = format! ("{}/applications", data_dir);
+      let dir = std::fs::read_dir (&dir_path);
+      if let Err (error) = dir {
+        eprintln! ("Could not read {dir_path}: {error}");
+        self.error = Some (error);
+        continue;
+      }
+      println! ("Indexing: {dir_path}");
+      self.error = None;
+      for file in dir.unwrap ().flatten () {
+        let file_name = if let Some (file_name) = file.file_name ().to_str () {
+          file_name.to_owned ()
+        } else {
+          continue;
+        };
+        if !file_name.ends_with (".desktop") {
+          continue;
+        }
+        let content = std::fs::read_to_string (file.path ());
+        if let Err (error) = content {
+          eprintln! ("Could not read {}: {}", file_name, error);
+          continue;
+        }
+        let path = file.path ().as_path ().to_owned ();
+        let maybe_de = DesktopEntry::decode (&path, content.as_ref ().unwrap ());
+        if let Err (error) = maybe_de {
+          eprintln! ("Could not decode {}: {}", file_name, error);
+          continue;
+        }
+        let de = maybe_de.unwrap ();
+        if de.exec ().is_none () {
+          continue;
+        }
+        if let Some (entry) = Entry::from_desktop_entry (file_name, &de, &locales, &dir_path) {
+          self.entries.push (entry);
+        }
+      }
     }
-    self.error = None;
-    for file in dir.unwrap ().flatten () {
-      let file_name = if let Some (file_name) = file.file_name ().to_str () {
-        file_name.to_owned ()
-      } else {
-        continue;
-      };
-      if !file_name.ends_with (".desktop") {
-        continue;
-      }
-      let content = std::fs::read_to_string (file.path ());
-      if let Err (error) = content {
-        eprintln! ("Could not read {}: {}", file_name, error);
-        continue;
-      }
-      let path = file.path ().as_path ().to_owned ();
-      let maybe_de = DesktopEntry::decode (&path, content.as_ref ().unwrap ());
-      if let Err (error) = maybe_de {
-        eprintln! ("Could not decode {}: {}", file_name, error);
-        continue;
-      }
-      let de = maybe_de.unwrap ();
-      if de.exec ().is_none () {
-        continue;
-      }
-      if let Some (entry) = Entry::from_desktop_entry (file_name, &de, &locales) {
-        self.entries.push (entry);
-      }
-    }
+    let len_before = self.entries.len ();
+    println! ("Deduplicating");
+    let mut unique = HashSet::new ();
+    self.entries.retain (|e| {
+      // Could miss some due to hash collision but it's unlikely and we don't
+      // need to clone each filename this way.
+      let mut hasher = DefaultHasher::new ();
+      e.file_name.hash (&mut hasher);
+      unique.insert (hasher.finish ())
+    });
+    let len_after = self.entries.len ();
+    println! (" -> removed {} duplicates", len_before - len_after);
+    println! ("Finished builing cache with {} items", len_after);
   }
 
   fn get_match (name: &str, entry_value: String) -> Option<MatchKind> {
