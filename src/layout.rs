@@ -198,8 +198,8 @@ impl Layout {
     let mut window = LayoutBuilder::new (Rectangle {
       x: 0,
       y: 0,
-      width: screen_width / 2,
-      height: screen_height / 2,
+      width: screen_width * config.window_width_percent / 100,
+      height: screen_height * config.window_height_percent / 100,
     });
     window.margin (10);
     let entry = window.add_top_child (config.entry_height, 10);
