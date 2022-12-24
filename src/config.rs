@@ -14,6 +14,7 @@ pub struct ParsedConfig {
   icon_theme: Option<String>,
   scroll_speed: Option<i32>,
   locale: Option<String>,
+  scroll_bar_width: Option<u32>,
 }
 
 #[derive(Clone)]
@@ -27,6 +28,7 @@ pub struct Config {
   pub list_empty_font: String,
   pub scroll_speed: i32,
   pub locale: Option<String>,
+  pub scroll_bar_width: u32,
 }
 
 impl Config {
@@ -57,6 +59,7 @@ impl Config {
         .unwrap_or_else (|| "sans 48".to_string ()),
       scroll_speed: parsed.scroll_speed.unwrap_or (10),
       locale: parsed.locale,
+      scroll_bar_width: parsed.scroll_bar_width.unwrap_or (8),
     }
   }
 }

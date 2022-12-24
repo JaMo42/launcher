@@ -4,7 +4,7 @@ use crate::{
   x::{Display, Window},
 };
 use cairo::{Context, LinearGradient, Operator, Surface};
-use cairo_sys::cairo_xlib_surface_create;
+use cairo_sys::{cairo_xlib_surface_create, cairo_xlib_surface_set_drawable};
 use pango::{EllipsizeMode, FontDescription, Layout};
 use x11::xlib::{
   Drawable, XCopyArea, XCreateGC, XCreatePixmap, XFreeGC, XFreePixmap, XVisualInfo, GC,
@@ -131,7 +131,7 @@ impl DrawingContext {
     self.context.paint ().unwrap ();
   }
 
-  pub fn render (&mut self, window: Window, rect: &Rectangle) {
+  pub fn render (&self, window: Window, rect: &Rectangle) {
     self.surface.flush ();
     unsafe {
       XCopyArea (
@@ -151,7 +151,7 @@ impl DrawingContext {
     self.display.sync (false);
   }
 
-  pub fn render_to_00 (&mut self, window: Window, rect: &Rectangle) {
+  pub fn render_to_00 (&self, window: Window, rect: &Rectangle) {
     self.surface.flush ();
     unsafe {
       XCopyArea (

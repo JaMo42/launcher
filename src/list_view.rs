@@ -98,6 +98,7 @@ pub struct ListView {
   empty_screen: DrawingContext,
   cache: Arc<Mutex<DesktopEntryCache>>,
   scroll_speed: i32,
+  scroll_bar_height: u32,
 }
 
 impl ListView {
@@ -128,6 +129,8 @@ impl ListView {
       visual_info,
     );
     dc.set_font (&FontDescription::from_string (&config.list_font));
+    // Since the items in the main drawing context are only rendered once we
+    // need separate contexts for dynamic visuals.
     let empty_screen = create_empty_screen (
       display,
       layout.window.width,
@@ -151,6 +154,7 @@ impl ListView {
       empty_screen,
       cache,
       scroll_speed: config.scroll_speed,
+      scroll_bar_height: 0,
     }
   }
 
@@ -185,11 +189,70 @@ impl ListView {
     // TODO: if previously selected is in new list, keep it selected
     self.scroll = 0;
     self.selected = 0;
+    self.resize_scrollbar ();
     self.draw ();
   }
 
   pub fn is_empty (&self) -> bool {
     self.items.is_empty ()
+  }
+
+  fn resize_scrollbar (&mut self) {
+    if self.layout.scroll_bar_width == 0 {
+      return;
+    }
+    let visible_height = self.layout.window.height;
+    let content_height = self.items.len () as u32 * self.layout.item_height;
+    if content_height <= visible_height {
+      self.scroll_bar_height = 0;
+      return;
+    }
+    let percentage = visible_height as f64 / content_height as f64;
+    self.scroll_bar_height = (visible_height as f64 * percentage).round () as u32;
+  }
+
+  fn draw_scrollbar (&mut self) {
+    if self.scroll_bar_height == 0 || self.layout.scroll_bar_width == 0 {
+      return;
+    }
+    let visible_height = self.layout.window.height;
+    let pos = self.scroll as f64 / self.max_scroll_offset as f64;
+    let y = ((visible_height - self.scroll_bar_height) as f64 * pos) as i32;
+    // Redraw visible item backgrounds below scrollbar area.
+    let first_visible = self.position_to_item_index (self.scroll);
+    let last_visible = self.position_to_item_index (self.scroll + self.layout.window.height as i32);
+    for idx in first_visible..=last_visible {
+      let rect = Rectangle::new (
+        (self.layout.window.width - self.layout.scroll_bar_width) as i32,
+        self.item_index_to_position (idx),
+        self.layout.scroll_bar_width,
+        self.layout.item_height,
+      );
+      self
+        .dc
+        .rect (&rect)
+        .color (if idx == self.selected {
+          colors::LIST_SELECTED_BACKGROUND
+        } else if idx % 2 == 0 {
+          colors::BACKGROUND
+        } else {
+          colors::LIST_LIGHT_BACKGROUND
+        })
+        .draw ();
+    }
+    // Draw the scrollbar
+    let rect = Rectangle::new (
+      (self.layout.window.width - self.layout.scroll_bar_width) as i32,
+      self.scroll + y,
+      self.layout.scroll_bar_width,
+      self.scroll_bar_height,
+    );
+    self
+      .dc
+      .rect (&rect)
+      .color (colors::LIST_SCROLL_BAR)
+      .corner_radius (0.499)
+      .draw ();
   }
 
   #[inline]
@@ -241,6 +304,7 @@ impl ListView {
     }
     let mut rect = self.layout.window;
     rect.y += self.scroll;
+    self.draw_scrollbar ();
     self.dc.render_to_00 (self.window, &rect);
   }
 

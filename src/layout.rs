@@ -163,14 +163,18 @@ pub struct ListViewLayout {
   pub icon: Rectangle,
   pub text: Rectangle,
   pub item_height: u32,
+  pub scroll_bar_width: u32,
 }
 
 impl ListViewLayout {
   fn new (mut list_view: LayoutBuilder, config: &Config) -> Self {
     let reparent = list_view.make_origin ();
+    // Dummy item representing a single item, the actual background rect for
+    // items is created in `get_item_rects`.
     let mut item = list_view.add_top_child (config.list_item_height, 0);
     item.available.y += 4;
     item.available.height -= 8;
+    item.available.width -= config.scroll_bar_width;
     let icon = item.add_left_child (config.list_item_height, 4);
     let text = item.available ();
     Self {
@@ -179,6 +183,7 @@ impl ListViewLayout {
       icon: icon.into_rect (),
       text: text.into_rect (),
       item_height: config.list_item_height,
+      scroll_bar_width: config.scroll_bar_width,
     }
   }
 
