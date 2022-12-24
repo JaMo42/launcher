@@ -210,9 +210,7 @@ impl DesktopEntryCache {
   }
 
   pub fn rebuild (&mut self) {
-    if !self.entries.is_empty () {
-      self.entries.clear ();
-    }
+    self.entries.clear ();
     let locales = self.get_locales ();
     let data_dirs = std::env::var ("XDG_DATA_DIRS")
       .map (|s| s.split (':').map (|s| s.to_owned ()).collect ())

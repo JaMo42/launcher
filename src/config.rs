@@ -31,7 +31,8 @@ pub struct Config {
 
 impl Config {
   pub fn load () -> Self {
-    let pathname = "/home/j/.config/launcher.toml";
+    let home = std::env::var ("HOME").unwrap ();
+    let pathname = format! ("{}/.config/launcher.toml", home);
     let parsed = if let Ok (content) = std::fs::read_to_string (pathname) {
       toml::from_str (&content).unwrap_or_else (|error| {
         eprintln! ("Config loading error: {error}");

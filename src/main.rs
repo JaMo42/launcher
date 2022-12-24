@@ -22,8 +22,7 @@ mod util;
 mod x;
 
 use app::App;
-
-use crate::config::Config;
+use config::Config;
 
 struct CloseSocketOnExit;
 
@@ -65,7 +64,7 @@ fn main () {
   }
   x::init_threads ();
   input::set_locale_info ();
-  let display = Display::connect (None);
+  let mut display = Display::connect (None);
   for stream in listener.incoming () {
     match stream {
       Ok (mut stream) => {
@@ -103,4 +102,5 @@ fn main () {
       }
     }
   }
+  display.close ();
 }

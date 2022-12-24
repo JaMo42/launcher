@@ -176,7 +176,7 @@ impl UI {
   }
 
   pub fn button_press (&mut self, event: &mut XButtonPressedEvent) {
-    // Button4 and Button5 are the mouse whell, we can always allow it.
+    // Button4 and Button5 are the mouse wheel, we can always allow it.
     if event.button != Button4 && event.button != Button5 {
       if event.x < 0 || event.y < 0 || event.x > self.width || event.y > self.height {
         // Not inside the main window, close the program.
