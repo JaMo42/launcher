@@ -49,6 +49,9 @@ impl Svg {
 
 pub fn find_icon (name: &str) -> Option<String> {
   let base = icon_search_path ();
+  if base.is_empty () {
+    return None;
+  }
   let dirs = [
     "apps",
     "places",

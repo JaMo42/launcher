@@ -32,7 +32,7 @@ pub struct Config {
 impl Config {
   pub fn load () -> Self {
     let home = std::env::var ("HOME").unwrap ();
-    let pathname = format! ("{}/.config/launcher.toml", home);
+    let pathname = format! ("{home}/.config/launcher.toml");
     let parsed = if let Ok (content) = std::fs::read_to_string (pathname) {
       toml::from_str (&content).unwrap_or_else (|error| {
         eprintln! ("Config loading error: {error}");
@@ -65,13 +65,13 @@ fn find_icon_theme (name: String) -> String {
   let home = std::env::var ("HOME").unwrap ();
   let directories = [
     "/usr/share/icons".to_string (),
-    format! ("{}/{}", home, ".local/share/icons"),
-    format! ("{}/{}", home, ".icons"),
+    format! ("{home}/.local/share/icons"),
+    format! ("{home}/.icons"),
   ];
   for d in directories {
     let path = format! ("{}/{}", d, name);
     if std::fs::metadata (&path).is_ok () {
-      println! ("Found icon theme: {}", path);
+      println! ("Found icon theme: {path}");
       return path;
     }
   }
