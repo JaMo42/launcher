@@ -103,13 +103,6 @@ impl UI {
       .depth (visual_info.depth)
       .build ();
     main_window.set_class_hint ("Launcher", "launcher");
-    main_window.map_raised ();
-    main_window.clear ();
-
-    let mut dc = DrawingContext::create (display, width, height, &visual_info);
-    dc.fill (colors::BACKGROUND);
-    dc.render (main_window, &Rectangle::new (0, 0, width, height));
-    dc.destroy ();
 
     let p = layout.entry.reparent;
     let entry = Entry::create (
@@ -140,7 +133,13 @@ impl UI {
     );
     list_view.window.reparent (main_window, p.0, p.1);
 
+    // Map all windows and draw background
     main_window.map_subwindows ();
+    let mut dc = DrawingContext::create (display, width, height, &visual_info);
+    dc.fill (colors::BACKGROUND);
+    main_window.map_raised ();
+    dc.render (main_window, &Rectangle::new (0, 0, width, height));
+    dc.destroy ();
 
     Self {
       display: *display,
