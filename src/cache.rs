@@ -271,7 +271,7 @@ impl DesktopEntryCache {
     });
     let len_after = self.entries.len ();
     println! (" -> removed {} duplicates", len_before - len_after);
-    println! ("Finished builing cache with {} items", len_after);
+    println! ("Finished building cache with {} items", len_after);
   }
 
   fn get_match (name: &str, entry_value: String) -> Option<MatchKind> {

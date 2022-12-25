@@ -1,5 +1,10 @@
 use cache::DesktopEntryCache;
-use std::{sync::{Arc, Mutex}, time::Instant};
+use single_instance::SingleInstance;
+use std::{
+  process::Command,
+  sync::{Arc, Mutex},
+  time::Instant,
+};
 use x::Display;
 
 mod app;
@@ -21,6 +26,11 @@ use app::App;
 use config::Config;
 
 fn main () {
+  let instance_guard = SingleInstance::new ("launcher").unwrap ();
+  if !instance_guard.is_single () {
+    println! ("Already running");
+    return;
+  }
   let config = Config::load ();
   let cache = Arc::new (Mutex::new (DesktopEntryCache::new (&config.locale)));
   {
@@ -31,7 +41,10 @@ fn main () {
     if let Some (error) = cache.error () {
       eprintln! ("Failed to build desktop entry cache: {error}");
     } else {
-      println! ("Built desktop entry cache in {} milliseconds", elapsed.as_millis ());
+      println! (
+        "Built desktop entry cache in {} milliseconds",
+        elapsed.as_millis ()
+      );
     }
   }
   x::init_threads ();
