@@ -25,7 +25,7 @@ use app::App;
 use config::Config;
 
 fn main () {
-  let instance_guard = SingleInstance::new ("launcher").unwrap ();
+  let instance_guard = SingleInstance::new ("com.github.JaMo42.launcher").unwrap ();
   if !instance_guard.is_single () {
     println! ("Already running");
     return;
