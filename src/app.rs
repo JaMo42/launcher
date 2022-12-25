@@ -89,7 +89,6 @@ impl App {
         }
         match maybe_signal.unwrap () {
           Signal::SearchTextChanged (text) => {
-            println! ("Text changed: \"{text}\"");
             if text == self.search_text {
               continue;
             }
@@ -122,19 +121,15 @@ impl App {
             self.search_text = text;
           }
           Signal::CursorPositionChanged ((x, y)) => {
-            println! ("Cursor position: {x} {y}");
             self.ic.set_cursor_position (x, y);
           }
           Signal::SwapFocus => {
-            println! ("Swap focus");
             self.ui.swap_focus ();
           }
           Signal::Quit => {
-            println! ("Quit");
             running = false;
           }
           Signal::Commit (id) => {
-            println! ("Commit: {}", id);
             if let Some (exec) = self.get_exec (id) {
               self.launch (exec);
               if self.search_results.is_empty () {

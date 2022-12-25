@@ -1,7 +1,6 @@
 use cache::DesktopEntryCache;
 use single_instance::SingleInstance;
 use std::{
-  process::Command,
   sync::{Arc, Mutex},
   time::Instant,
 };
