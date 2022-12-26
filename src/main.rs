@@ -1,5 +1,4 @@
 use cache::DesktopEntryCache;
-use single_instance::SingleInstance;
 use std::{
   sync::{Arc, Mutex},
   time::Instant,
@@ -25,11 +24,6 @@ use app::App;
 use config::Config;
 
 fn main () {
-  let instance_guard = SingleInstance::new ("com.github.JaMo42.launcher").unwrap ();
-  if !instance_guard.is_single () {
-    println! ("Already running");
-    return;
-  }
   let config = Config::load ();
   let cache = Arc::new (Mutex::new (DesktopEntryCache::new (&config.locale)));
   {
