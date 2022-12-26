@@ -6,7 +6,7 @@ use crate::{
 };
 use std::{
   cmp::Ordering,
-  collections::{BTreeSet, HashMap},
+  collections::HashMap,
   os::unix::prelude::PermissionsExt,
   path::PathBuf,
   sync::{
@@ -308,7 +308,7 @@ fn highlight_match (match_str: &str, search: &str) -> String {
   let mut result =
     String::with_capacity (match_str.len () + 30 * search.chars ().count () * 75 / 100);
   let mut match_chars = match_str.chars ();
-  let mut search_chars = search.chars ();
+  let mut search_chars = search.chars ().filter (|c| *c != ' ');
   let mut s = search_chars.next ().unwrap ().to_ascii_lowercase ();
   let mut is_highlight = false;
   // Highlight all matching in-order
@@ -332,27 +332,7 @@ fn highlight_match (match_str: &str, search: &str) -> String {
   }
   if is_highlight {
     result.push_str (END_HIGHLIGHT);
-    is_highlight = false;
   }
-  // Highlight the first occurence of all search chars left in the remaining text
-  let mut search_chars_left = BTreeSet::from_iter (search_chars.filter (|c| *c != ' '));
-  for c in match_chars.by_ref () {
-    if search_chars_left.contains (&c) {
-      if !is_highlight {
-        is_highlight = true;
-        result.push_str (unsafe { &BEGIN_HIGHLIGHT });
-      }
-      search_chars_left.remove (&c);
-    } else if is_highlight {
-      is_highlight = false;
-      result.push_str (END_HIGHLIGHT);
-    }
-    result.push (c);
-    if search_chars_left.is_empty () {
-      break;
-    }
-  }
-  // All search characters highlighted, just append the remaining text.
   result.extend (match_chars);
   result
 }
