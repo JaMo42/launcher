@@ -34,7 +34,7 @@ pub mod colors {
   pub const LIST_MATCH_NAME: Color = TEXT.scale (70);
   pub const LIST_LIGHT_BACKGROUND: Color = BACKGROUND.scale (120);
   pub const LIST_MATCH_HIGHLIGHT: Color = ACCENT;
-  pub const LIST_SELECTED_BACKGROUND: Color = BACKGROUND.scale (60);
+  pub const LIST_SELECTED_BACKGROUND: Color = BACKGROUND.scale (60).with_alpha (229);
   pub const LIST_SCROLL_BAR: Color = TEXT.with_alpha (204).scale (50);
 }
 
