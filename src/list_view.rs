@@ -5,7 +5,7 @@ use crate::{
   draw::DrawingContext,
   input::{Key, KeyEvent},
   layout::{ListViewLayout, Rectangle},
-  res::Svg,
+  res::{resources, Svg},
   ui::colors,
   x::{Display, Window},
 };
@@ -21,11 +21,16 @@ const CAPACITY: u32 = 100;
 pub struct Item {
   icon: Option<Svg>,
   markup_text: String,
+  is_in_history: bool,
 }
 
 pub trait Render {
   fn icon (&self, _cache: &DesktopEntryCache) -> Option<Svg> {
     None
+  }
+
+  fn is_in_history (&self) -> bool {
+    false
   }
 
   fn markup (&self, search: &str, cache: &DesktopEntryCache) -> String;
@@ -51,6 +56,7 @@ impl LazyItem {
           *self = Self::Rendered (Item {
             icon: renderable.icon (cache),
             markup_text: renderable.markup (search, cache),
+            is_in_history: renderable.is_in_history (),
           });
         }
         self.get (search, cache)
@@ -99,6 +105,7 @@ pub struct ListView {
   cache: Arc<Mutex<DesktopEntryCache>>,
   scroll_speed: i32,
   scroll_bar_height: u32,
+  history_icon: Svg,
 }
 
 impl ListView {
@@ -155,6 +162,7 @@ impl ListView {
       cache,
       scroll_speed: config.scroll_speed,
       scroll_bar_height: 0,
+      history_icon: Svg::load (resources::HISTORY_ICON),
     }
   }
 
@@ -259,7 +267,7 @@ impl ListView {
   fn draw_item (&mut self, idx: usize, redraw: bool) {
     let i = &mut self.items[idx];
     if redraw || !i.is_rendered () {
-      let (background, icon, text) = self.layout.get_item_rects (idx);
+      let (background, icon, mut text) = self.layout.get_item_rects (idx);
       self
         .dc
         .rect (&background)
@@ -274,6 +282,12 @@ impl ListView {
       let item = i.get (&self.search, &self.cache);
       if let Some (svg) = &item.icon {
         self.dc.svg (svg, &icon);
+      }
+      if item.is_in_history {
+        let icon = ListViewLayout::add_secondary_icon (&mut text);
+        self
+          .dc
+          .colored_svg (&mut self.history_icon, colors::LIST_MATCH_NAME, &icon);
       }
       self.dc.set_color (colors::TEXT);
       self

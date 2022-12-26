@@ -9,7 +9,7 @@ pub struct Rectangle {
 }
 
 impl Rectangle {
-  fn scale (&mut self, percent: u32) {
+  pub fn scale (&mut self, percent: u32) {
     let new_width = self.width * percent / 100;
     let new_height = self.height * percent / 100;
     self.x += (self.width as i32 - new_width as i32) / 2;
@@ -195,6 +195,13 @@ impl ListViewLayout {
     let mut text = self.text;
     text.y += y;
     (background, icon, text)
+  }
+
+  pub fn add_secondary_icon (text: &mut Rectangle) -> Rectangle {
+    text.width -= text.height;
+    let mut icon = Rectangle::new (text.x + text.width as i32, text.y, text.height, text.height);
+    icon.scale (70);
+    icon
   }
 }
 

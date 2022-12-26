@@ -39,6 +39,9 @@ impl Render for Entry {
       }
     }
   }
+
+  // `is_in_history` is not implemented since it's pointless to show that the
+  // history entries are in the history when we're only showing the history.
 }
 
 pub struct History {

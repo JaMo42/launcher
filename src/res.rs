@@ -6,7 +6,8 @@ use librsvg::{CairoRenderer, Loader, SvgHandle};
 use crate::config::icon_search_path;
 
 pub mod resources {
-  pub static SEARCH_ICON: &'static [u8] = include_bytes! ("../res/search.svg");
+  pub static SEARCH_ICON: &[u8] = include_bytes! ("../res/search.svg");
+  pub static HISTORY_ICON: &[u8] = include_bytes! ("../res/history.svg");
 }
 
 pub struct Svg {
