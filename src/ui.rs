@@ -79,13 +79,13 @@ impl UI {
     cache: Arc<Mutex<DesktopEntryCache>>,
     config: &Config,
   ) -> Self {
-    let screen_size = main_screen_size (&display);
+    let screen_size = main_screen_size (display);
     let layout = Layout::new (screen_size.0, screen_size.1, config);
     let width = layout.window.width;
     let height = layout.window.height;
     let visual_info = display.match_visual_info (32, TrueColor).unwrap ();
     let colormap = display.create_colormap (visual_info.visual, AllocNone);
-    let main_window = Window::builder (&display)
+    let main_window = Window::builder (display)
       .size (width, height)
       .position (
         (screen_size.0 - width) as i32 / 2,

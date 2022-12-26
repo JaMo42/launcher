@@ -40,7 +40,7 @@ fn expand_exec (
   // https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html#exec-variables
   let icon = icon
     .map (|i| format! ("--icon {i}"))
-    .unwrap_or_else (|| String::new ());
+    .unwrap_or_else (String::new);
   let file_location = format! ("{}/{}", path, file_name);
   exec
     .replace ("%f", "")
@@ -62,13 +62,13 @@ pub enum MatchField {
 }
 
 impl MatchField {
-  pub fn inner (&self) -> MatchKind {
+  pub fn into_inner (self) -> MatchKind {
     match self {
-      &Self::Name (kind) => kind,
-      &Self::LocalizedName (kind) => kind,
-      &Self::GenericName (kind) => kind,
-      &Self::LocalizedGenericName (kind) => kind,
-      &Self::FileName (kind) => kind,
+      Self::Name (kind) => kind,
+      Self::LocalizedName (kind) => kind,
+      Self::GenericName (kind) => kind,
+      Self::LocalizedGenericName (kind) => kind,
+      Self::FileName (kind) => kind,
     }
   }
 }
@@ -119,29 +119,29 @@ impl Entry {
       .map (|cow_str| cow_str.to_string ())
       .or_else (|| localized_name.clone ())
       .or_else (|| generic_name.clone ());
-    if name.is_none () {
-      eprintln! ("No suitable name found in {}.", file_name);
-      None
-    } else {
+    if let Some (name) = name {
       let icon = de.icon ();
       let exec = expand_exec (
         // Already checked this exists in `DesktopEntryCache::rebuild`.
         de.exec ().unwrap (),
         &file_name,
         path,
-        name.as_ref ().unwrap (),
-        localized_name.as_ref ().map (|n| n.as_str ()),
+        &name,
+        localized_name.as_deref (),
         icon,
       );
       Some (Self {
-        name: name.unwrap (),
+        name,
         localized_name,
         generic_name,
         localized_generic_name,
         file_name,
         exec,
-        icon: icon.and_then (|s| find_icon (s)),
+        icon: icon.and_then (find_icon),
       })
+    } else {
+      eprintln! ("No suitable name found in {}.", file_name);
+      None
     }
   }
 
@@ -278,7 +278,7 @@ impl DesktopEntryCache {
     if entry_value == name {
       Some (MatchKind::Exact)
     } else {
-      let sim = strsim::jaro_winkler (&name, &entry_value);
+      let sim = strsim::jaro_winkler (name, &entry_value);
       if sim >= SIMILARITY_THRESHHOLD {
         Some (MatchKind::Similar (sim))
       } else {

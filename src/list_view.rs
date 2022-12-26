@@ -47,9 +47,9 @@ impl LazyItem {
   }
 
   fn get (&mut self, search: &str, cache: &Arc<Mutex<DesktopEntryCache>>) -> &Item {
-    match self {
-      &mut Self::Rendered (ref item) => item,
-      &mut Self::NotRendered (renderable) => {
+    match *self {
+      Self::Rendered (ref item) => item,
+      Self::NotRendered (renderable) => {
         {
           let guard = cache.lock ().unwrap ();
           let cache = guard.deref ();
@@ -456,14 +456,12 @@ impl ListView {
           self.click_item = click_idx;
           // This already redraws
           self.adjust_view ();
-        } else {
-          if event.time - self.click_time < 500 {
-            send_signal (
-              &self.display,
-              &self.signal_sender,
-              Signal::Commit (self.click_item),
-            );
-          }
+        } else if event.time - self.click_time < 500 {
+          send_signal (
+            &self.display,
+            &self.signal_sender,
+            Signal::Commit (self.click_item),
+          );
         }
         self.click_time = event.time;
         return;

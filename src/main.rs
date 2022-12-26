@@ -49,6 +49,6 @@ fn main () {
   x::init_threads ();
   input::set_locale_info ();
   let mut display = Display::connect (None);
-  App::new (display, cache.clone (), config.clone ()).run ();
+  App::new (display, cache, config).run ();
   display.close ();
 }

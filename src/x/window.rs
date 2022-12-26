@@ -35,12 +35,6 @@ impl Window {
     self.handle
   }
 
-  pub fn clear (&self) {
-    unsafe {
-      XClearWindow (self.display (), self.handle);
-    }
-  }
-
   pub fn map_raised (&self) {
     unsafe {
       XMapRaised (self.display (), self.handle);

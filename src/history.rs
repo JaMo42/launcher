@@ -19,7 +19,7 @@ impl Render for Entry {
   fn markup (&self, _search: &str, cache: &DesktopEntryCache) -> String {
     match self {
       Entry::DesktopEntry (file_name) => {
-        let id = cache.find_file (&file_name).unwrap ();
+        let id = cache.find_file (file_name).unwrap ();
         cache.get_entry (id).name.clone ()
       }
       Entry::Path (path) => path.file_name ().unwrap ().to_str ().unwrap ().to_string (),
@@ -31,11 +31,11 @@ impl Render for Entry {
       Entry::Path (_) => None,
       Entry::DesktopEntry (file_name) => {
         let id = cache.find_file (file_name).unwrap ();
-        if let Some (icon_path) = &cache.get_entry (id).icon {
-          Some (Svg::open (icon_path))
-        } else {
-          None
-        }
+        cache
+          .get_entry (id)
+          .icon
+          .as_ref ()
+          .map (|icon_path| Svg::open (icon_path))
       }
     }
   }
@@ -71,7 +71,7 @@ impl History {
         .into_iter ()
         .filter (|e| match e {
           Entry::Path (path) => std::fs::metadata (path).is_ok (),
-          Entry::DesktopEntry (file_name) => cache.find_file (&file_name).is_some (),
+          Entry::DesktopEntry (file_name) => cache.find_file (file_name).is_some (),
         })
         .collect ();
       let mut desktop_ids = HashMap::new ();

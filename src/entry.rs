@@ -215,7 +215,7 @@ impl Entry {
 
   fn jump (&self, left: bool) -> usize {
     fn scan (
-      chars: &Vec<char>,
+      chars: &[char],
       current: Option<&char>,
       range: impl Iterator<Item = usize>,
       or: usize,
@@ -228,6 +228,7 @@ impl Entry {
       }
       or
     }
+    #[allow(clippy::collapsible_else_if)]
     if left {
       if self.cursor_position == 0 {
         self.cursor_position

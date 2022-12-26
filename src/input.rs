@@ -1,10 +1,9 @@
 use crate::x::{lookup_keysym, Display, Window};
 use std::ffi::{c_void, CStr, CString};
 use x11::xlib::{
-  ControlMask, ShiftMask, XBufferOverflow, XCloseIM, XCreateIC, XDestroyIC, XFree,
-  XIMPreeditNothing, XIMStatusNothing, XKeyEvent, XNClientWindow, XNInputStyle,
-  XNPreeditAttributes, XNSpotLocation, XOpenIM, XPoint, XSetICFocus, XSetICValues,
-  XSetLocaleModifiers, XVaCreateNestedList, Xutf8LookupString, XIC, XIM,
+  ControlMask, ShiftMask, XBufferOverflow, XCreateIC, XFree, XIMPreeditNothing, XIMStatusNothing,
+  XKeyEvent, XNClientWindow, XNInputStyle, XNPreeditAttributes, XNSpotLocation, XOpenIM, XPoint,
+  XSetICFocus, XSetICValues, XSetLocaleModifiers, XVaCreateNestedList, Xutf8LookupString, XIC, XIM,
 };
 
 /// Special keys, all text is handled through the input management engine.
@@ -36,10 +35,7 @@ pub struct KeyEvent {
 impl KeyEvent {
   pub fn is_text_cursor_movement (&self) -> bool {
     use Key::*;
-    match self.key {
-      Left | Right | Home | End => true,
-      _ => false,
-    }
+    matches! (self.key, Left | Right | Home | End)
   }
 }
 
@@ -47,7 +43,7 @@ type XVaNestedList = *mut c_void;
 
 pub struct InputContext {
   xic: XIC,
-  xim: XIM,
+  _xim: XIM,
   input_buffer: Vec<i8>,
   xn_preedit_attributes: CString,
   spot: Box<XPoint>,
@@ -68,7 +64,7 @@ impl InputContext {
     };
     Self {
       xic: ic,
-      xim,
+      _xim: xim,
       input_buffer: vec! [0; 8],
       xn_preedit_attributes: CString::new (XNPreeditAttributes).unwrap (),
       spot,

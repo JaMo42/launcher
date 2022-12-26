@@ -113,13 +113,11 @@ impl Render for SearchMatch {
   fn icon (&self, cache: &DesktopEntryCache) -> Option<Svg> {
     match &self.match_ {
       SearchMatchKind::PathEntry (_) => None,
-      SearchMatchKind::DeskopEntry (entry) => {
-        if let Some (icon_path) = &cache.get_entry (entry.id).icon {
-          Some (Svg::open (icon_path))
-        } else {
-          None
-        }
-      }
+      SearchMatchKind::DeskopEntry (entry) => cache
+        .get_entry (entry.id)
+        .icon
+        .as_ref ()
+        .map (|icon_path| Svg::open (icon_path)),
     }
   }
 
@@ -189,7 +187,7 @@ fn get_field_scale (field: MatchField) -> f64 {
 }
 
 fn desktop_entry_score (field: MatchField) -> f64 {
-  match field.inner () {
+  match field.into_inner () {
     MatchKind::Exact => scores::EXACT_BASE,
     MatchKind::Similar (sim) => sim * get_field_scale (field),
   }
@@ -278,27 +276,24 @@ pub fn search (
 
 /// Sorts the search results. If any of the results is in the history its score
 /// heavyily adjusted toward how recent it is in the history.
-pub fn sort_search_results (results: &mut Vec<SearchMatch>, history: &HashMap<usize, usize>) {
+pub fn sort_search_results (results: &mut [SearchMatch], history: &HashMap<usize, usize>) {
   for result in results.iter_mut () {
-    match &mut result.match_ {
-      &mut SearchMatchKind::DeskopEntry (ref mut data) => {
-        if let Some (recency) = history.get (&data.id) {
-          // Original version:
-          // this will always place results in the history above those that are
-          // are not, ordering the history results by recency.
-          // result.score = 10.0 + *recency as f64;
+    if let SearchMatchKind::DeskopEntry (data) = &result.unwrap () {
+      if let Some (recency) = history.get (&data.id) {
+        // Original version:
+        // this will always place results in the history above those that are
+        // are not, ordering the history results by recency.
+        // result.score = 10.0 + *recency as f64;
 
-          // Note that only for old elements (recency 1 or 2) would this not
-          // have the same effect as the above implementation
-          result.score *= 2.0 * *recency as f64;
+        // Note that only for old elements (recency 1 or 2) would this not
+        // have the same effect as the above implementation
+        result.score *= 2.0 * *recency as f64;
 
-          result.is_in_history = true;
-        }
+        result.is_in_history = true;
       }
-      _ => {}
     }
   }
-  results.sort_by (|a, b| a.compare (&b));
+  results.sort_by (|a, b| a.compare (b));
 }
 
 fn highlight_match (match_str: &str, search: &str) -> String {
@@ -317,29 +312,23 @@ fn highlight_match (match_str: &str, search: &str) -> String {
   let mut s = search_chars.next ().unwrap ().to_ascii_lowercase ();
   let mut is_highlight = false;
   // Highlight all matching in-order
-  loop {
-    if let Some (c) = match_chars.next () {
-      if c.to_ascii_lowercase () == s {
-        if !is_highlight {
-          is_highlight = true;
-          result.push_str (unsafe { &BEGIN_HIGHLIGHT });
-        }
-        if let Some (next_s) = search_chars.next () {
-          s = next_s.to_ascii_lowercase ();
-        } else {
-          result.push (c);
-          break;
-        }
-      } else {
-        if is_highlight {
-          is_highlight = false;
-          result.push_str (END_HIGHLIGHT);
-        }
+  for c in match_chars.by_ref () {
+    if c.to_ascii_lowercase () == s {
+      if !is_highlight {
+        is_highlight = true;
+        result.push_str (unsafe { &BEGIN_HIGHLIGHT });
       }
-      result.push (c);
-    } else {
-      break;
+      if let Some (next_s) = search_chars.next () {
+        s = next_s.to_ascii_lowercase ();
+      } else {
+        result.push (c);
+        break;
+      }
+    } else if is_highlight {
+      is_highlight = false;
+      result.push_str (END_HIGHLIGHT);
     }
+    result.push (c);
   }
   if is_highlight {
     result.push_str (END_HIGHLIGHT);
@@ -347,28 +336,23 @@ fn highlight_match (match_str: &str, search: &str) -> String {
   }
   // Highlight the first occurence of all search chars left in the remaining text
   let mut search_chars_left = BTreeSet::from_iter (search_chars.filter (|c| *c != ' '));
-  if search_chars_left.is_empty () {
-    // All search characters highlighted, just append the remaining text.
-    result.extend (match_chars);
-    return result;
-  }
-  for c in match_chars {
+  for c in match_chars.by_ref () {
     if search_chars_left.contains (&c) {
       if !is_highlight {
         is_highlight = true;
         result.push_str (unsafe { &BEGIN_HIGHLIGHT });
       }
       search_chars_left.remove (&c);
-    } else {
-      if is_highlight {
-        is_highlight = false;
-        result.push_str (END_HIGHLIGHT);
-      }
+    } else if is_highlight {
+      is_highlight = false;
+      result.push_str (END_HIGHLIGHT);
     }
     result.push (c);
     if search_chars_left.is_empty () {
       break;
     }
   }
+  // All search characters highlighted, just append the remaining text.
+  result.extend (match_chars);
   result
 }

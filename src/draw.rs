@@ -4,7 +4,7 @@ use crate::{
   x::{Display, Window},
 };
 use cairo::{Context, LinearGradient, Operator, Surface};
-use cairo_sys::{cairo_xlib_surface_create, cairo_xlib_surface_set_drawable};
+use cairo_sys::cairo_xlib_surface_create;
 use pango::{EllipsizeMode, FontDescription, Layout};
 use x11::xlib::{
   Drawable, XCopyArea, XCreateGC, XCreatePixmap, XFreeGC, XFreePixmap, XVisualInfo, GC,

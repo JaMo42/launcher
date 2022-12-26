@@ -136,7 +136,7 @@ impl App {
                 self.history.renew (id);
               } else {
                 self.history.add (
-                  &self.search_results[id].unwrap (),
+                  self.search_results[id].unwrap (),
                   self.cache.lock ().unwrap ().borrow (),
                 );
               }
