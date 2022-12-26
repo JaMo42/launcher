@@ -1,6 +1,6 @@
 use crate::app::{send_signal, Signal};
 use crate::config::Config;
-use crate::draw::DrawingContext;
+use crate::draw::{Color, ColorKind, DrawingContext, GradientSpec};
 use crate::input::{Key, KeyEvent};
 use crate::layout::{EntryLayout, Rectangle};
 use crate::res::*;
@@ -79,6 +79,8 @@ impl Entry {
   }
 
   fn draw_box (&mut self) {
+    const GRADIENT_TOP: Color = colors::ENTRY_FOCUSED_BORDER.scale (105);
+    const GRADIENT_BOT: Color = colors::ENTRY_FOCUSED_BORDER.scale (95);
     self.dc.fill (colors::BACKGROUND);
     self
       .dc
@@ -88,9 +90,9 @@ impl Entry {
       .stroke (
         self.layout.stroke,
         if self.is_focused {
-          colors::ENTRY_FOCUSED_BORDER
+          ColorKind::Gradient (GradientSpec::new_vertical (GRADIENT_TOP, GRADIENT_BOT))
         } else {
-          colors::ENTRY_NORMAL_BORDER
+          ColorKind::Solid (colors::ENTRY_NORMAL_BORDER)
         },
       )
       .draw ();

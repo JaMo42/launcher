@@ -266,7 +266,7 @@ impl GradientSpec {
   }
 }
 
-enum ColorKind {
+pub enum ColorKind {
   None,
   Solid (Color),
   Gradient (GradientSpec),
@@ -280,7 +280,7 @@ pub struct ShapeBuilder<'a> {
   width: f64,
   height: f64,
   color: ColorKind,
-  stroke: Option<(u32, Color)>,
+  stroke: Option<(u32, ColorKind)>,
   corner_radius_percent: Option<f64>,
 }
 
@@ -311,12 +311,13 @@ impl<'a> ShapeBuilder<'a> {
     self
   }
 
+  #[allow(dead_code)]
   pub fn gradient (&mut self, spec: GradientSpec) -> &mut Self {
     self.color = ColorKind::Gradient (spec);
     self
   }
 
-  pub fn stroke (&mut self, width: u32, color: Color) -> &mut Self {
+  pub fn stroke (&mut self, width: u32, color: ColorKind) -> &mut Self {
     self.stroke = Some ((width, color));
     // Half the stroke lies outside the shape but we want to preserve the
     // bounding box so we shrink it.
@@ -337,7 +338,7 @@ impl<'a> ShapeBuilder<'a> {
 
   pub fn draw (&self) {
     self.set_path ();
-    self.set_color ();
+    self.set_color (&self.color);
     self.fill ();
   }
 
@@ -385,8 +386,8 @@ impl<'a> ShapeBuilder<'a> {
     }
   }
 
-  fn set_color (&self) {
-    match self.color {
+  fn set_color (&self, color: &ColorKind) {
+    match color {
       ColorKind::None => {}
       ColorKind::Solid (ref color) => {
         let (r, g, b, a) = color.float_parts ();
@@ -403,6 +404,7 @@ impl<'a> ShapeBuilder<'a> {
         gradient.add_color_stop_rgba (0.0, r, g, b, a);
         let (r, g, b, a) = spec.end.float_parts ();
         gradient.add_color_stop_rgba (1.0, r, g, b, a);
+        self.context.set_source (gradient).unwrap ();
       }
     }
   }
@@ -410,8 +412,9 @@ impl<'a> ShapeBuilder<'a> {
   fn fill (&self) {
     if let Some ((stroke_width, ref stroke_color)) = self.stroke {
       self.context.fill_preserve ().unwrap ();
-      let (r, g, b, _a) = stroke_color.float_parts ();
-      self.context.set_source_rgb (r, g, b);
+      //let (r, g, b, _a) = stroke_color.float_parts ();
+      //self.context.set_source_rgb (r, g, b);
+      self.set_color (stroke_color);
       self.context.set_line_width (stroke_width as f64);
       self.context.stroke ().unwrap ();
     } else {
