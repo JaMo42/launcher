@@ -157,6 +157,17 @@ impl Display {
       self.scoped_pointer_grab (window, mouse_mask),
     )
   }
+
+  pub fn set_input_focus<W: ToXWindow> (&self, window: W) {
+    unsafe {
+      XSetInputFocus (
+        self.connection,
+        window.to_xwindow (),
+        RevertToParent,
+        CurrentTime,
+      );
+    }
+  }
 }
 
 pub trait ToXDisplay {

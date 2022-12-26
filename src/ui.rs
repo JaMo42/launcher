@@ -97,7 +97,7 @@ impl UI {
           .override_redirect (!cfg! (debug_assertions))
           .colormap (colormap)
           .border_pixel (0)
-          .event_mask (KeyPressMask);
+          .event_mask (KeyPressMask | ButtonPressMask);
       })
       .visual (visual_info.visual)
       .depth (visual_info.depth)
@@ -140,6 +140,7 @@ impl UI {
     main_window.map_raised ();
     dc.render (main_window, &Rectangle::new (0, 0, width, height));
     dc.destroy ();
+    display.set_input_focus (main_window);
 
     Self {
       display: *display,
