@@ -1,7 +1,7 @@
 use cache::DesktopEntryCache;
 use std::{
-  sync::{Arc, Mutex},
-  time::Instant,
+    sync::{Arc, Mutex},
+    time::Instant,
 };
 use x::Display;
 
@@ -23,26 +23,26 @@ mod x;
 use app::App;
 use config::Config;
 
-fn main () {
-  let config = Config::load ();
-  let cache = Arc::new (Mutex::new (DesktopEntryCache::new (&config.locale)));
-  {
-    let mut cache = cache.lock ().unwrap ();
-    let time = Instant::now ();
-    cache.rebuild ();
-    let elapsed = time.elapsed ();
-    if let Some (error) = cache.error () {
-      eprintln! ("Failed to build desktop entry cache: {error}");
-    } else {
-      println! (
-        "Built desktop entry cache in {} milliseconds",
-        elapsed.as_millis ()
-      );
+fn main() {
+    let config = Config::load();
+    let cache = Arc::new(Mutex::new(DesktopEntryCache::new(&config.locale)));
+    {
+        let mut cache = cache.lock().unwrap();
+        let time = Instant::now();
+        cache.rebuild();
+        let elapsed = time.elapsed();
+        if let Some(error) = cache.error() {
+            eprintln!("Failed to build desktop entry cache: {error}");
+        } else {
+            println!(
+                "Built desktop entry cache in {} milliseconds",
+                elapsed.as_millis()
+            );
+        }
     }
-  }
-  x::init_threads ();
-  input::set_locale_info ();
-  let mut display = Display::connect (None);
-  App::new (display, cache, config).run ();
-  display.close ();
+    x::init_threads();
+    input::set_locale_info();
+    let mut display = Display::connect(None);
+    App::new(display, cache, config).run();
+    display.close();
 }
