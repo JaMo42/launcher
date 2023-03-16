@@ -1,4 +1,4 @@
-HISTORY_DIR=/var/lib
+HISTORY_DIR=/var/lib/launcher
 INSTALL_DIR=/usr/local/bin
 
 all:
