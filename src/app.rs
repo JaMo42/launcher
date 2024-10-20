@@ -54,7 +54,7 @@ pub struct App {
 
 impl App {
     pub fn new(display: Display, cache: Arc<Mutex<DesktopEntryCache>>, config: Config) -> Self {
-        let history = History::load(cache.lock().unwrap().borrow());
+        let history = History::load(cache.lock().unwrap().borrow(), config.history_entries);
         let (signal_sender, signal_receiver) = channel();
         let ui = UI::new(&display, signal_sender, cache.clone(), &config);
         let ic = input::init(&display, &ui.main_window);
@@ -102,7 +102,7 @@ impl App {
                             }
                             continue;
                         }
-                        // Only searching for a subset with a shart search text will likely
+                        // Only searching for a subset with a short search text will likely
                         // results in not finding things we want to find with the current text.
                         if self.search_text.len() >= 3 && text.starts_with(&self.search_text) {
                             self.search_results = search::search(

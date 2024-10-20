@@ -6,7 +6,7 @@ use std::{
 };
 
 const FILE: &str = "history";
-const MAX_SIZE: usize = 100;
+pub const DEFAULT_MAX_SIZE: usize = 100;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub enum Entry {
@@ -48,14 +48,16 @@ pub struct History {
     // maps IDs in the desktop cache to their recency score.
     desktop_ids: HashMap<usize, usize>,
     next_score: usize,
+    max_size: usize,
 }
 
 impl History {
-    fn new() -> Self {
+    fn new(max_size: usize) -> Self {
         Self {
             entries: VecDeque::new(),
             desktop_ids: HashMap::new(),
             next_score: 0,
+            max_size,
         }
     }
 
@@ -64,11 +66,12 @@ impl History {
         format!("{}/.cache/launcher", std::env::var("HOME").unwrap())
     }
 
-    pub fn load(cache: &DesktopEntryCache) -> Self {
+    pub fn load(cache: &DesktopEntryCache, max_size: usize) -> Self {
         let pathname = format!("{}/{}", Self::dirpath(), FILE);
+        println!("Loading history from {}", pathname);
         if let Ok(history_data) = std::fs::read_to_string(pathname) {
             if history_data.is_empty() {
-                return Self::new();
+                return Self::new(max_size);
             }
             let entries: VecDeque<Entry> = ron::from_str(&history_data).unwrap();
             let entries: VecDeque<Entry> = entries
@@ -91,9 +94,10 @@ impl History {
                 entries,
                 desktop_ids,
                 next_score,
+                max_size,
             }
         } else {
-            Self::new()
+            Self::new(max_size)
         }
     }
 
@@ -124,7 +128,7 @@ impl History {
             }
         }
         // Drop oldest if capacity is filled
-        if self.entries.len() == MAX_SIZE {
+        if self.entries.len() == self.max_size {
             self.entries.pop_back();
         }
         self.entries.push_front(entry);

@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::history::DEFAULT_MAX_SIZE;
+
 static mut ICON_THEME: String = String::new();
 
 #[derive(Deserialize, Default)]
@@ -15,6 +17,7 @@ pub struct ParsedConfig {
     scroll_speed: Option<i32>,
     locale: Option<String>,
     scroll_bar_width: Option<u32>,
+    history_entries: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -29,6 +32,7 @@ pub struct Config {
     pub scroll_speed: i32,
     pub locale: Option<String>,
     pub scroll_bar_width: u32,
+    pub history_entries: usize,
 }
 
 impl Config {
@@ -60,10 +64,12 @@ impl Config {
             scroll_speed: parsed.scroll_speed.unwrap_or(10),
             locale: parsed.locale,
             scroll_bar_width: parsed.scroll_bar_width.unwrap_or(8),
+            history_entries: parsed.history_entries.unwrap_or(DEFAULT_MAX_SIZE),
         }
     }
 }
 
+// FIXME: https://specifications.freedesktop.org/icon-theme-spec/latest/
 fn find_icon_theme(name: String) -> String {
     let home = std::env::var("HOME").unwrap();
     let directories = [
