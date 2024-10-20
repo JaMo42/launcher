@@ -5,7 +5,6 @@ use std::{
     path::PathBuf,
 };
 
-const DIR: &str = "/var/lib/launcher";
 const FILE: &str = "history";
 const MAX_SIZE: usize = 100;
 
@@ -60,8 +59,13 @@ impl History {
         }
     }
 
+    fn dirpath() -> String {
+        // no reason storing this, this happens once at start and once when quitting
+        format!("{}/.cache/launcher", std::env::var("HOME").unwrap())
+    }
+
     pub fn load(cache: &DesktopEntryCache) -> Self {
-        let pathname = format!("{}/{}", DIR, FILE);
+        let pathname = format!("{}/{}", Self::dirpath(), FILE);
         if let Ok(history_data) = std::fs::read_to_string(pathname) {
             if history_data.is_empty() {
                 return Self::new();
@@ -94,10 +98,12 @@ impl History {
     }
 
     pub fn store(&self) {
-        std::fs::create_dir_all(DIR).unwrap();
-        let pathname = format!("{}/{}", DIR, FILE);
+        let dir = Self::dirpath();
+        std::fs::create_dir_all(&dir).unwrap();
+        let pathname = format!("{}/{}", dir, FILE);
         let data = ron::to_string(&self.entries).unwrap();
-        std::fs::write(pathname, data).unwrap();
+        std::fs::write(&pathname, data).unwrap();
+        println!("History saved to {}", pathname);
     }
 
     pub fn add(&mut self, result: &SearchMatchKind, cache: &DesktopEntryCache) {
