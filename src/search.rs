@@ -43,6 +43,7 @@ mod scores {
 
 pub const SIMILARITY_THRESHHOLD: f64 = 0.75;
 
+/// Desktop entry match data; actualy desktop entry data is in `cache::Entry`.
 pub struct DesktopEntryData {
     pub id: usize,
     pub name: String,

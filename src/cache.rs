@@ -79,10 +79,16 @@ pub struct Match {
 
 #[derive(Clone)]
 pub struct Entry {
+    // These are for display
     pub name: String,
     pub localized_name: Option<String>,
     pub generic_name: Option<String>,
     pub localized_generic_name: Option<String>,
+    // These are for searching
+    lower_name: String,
+    lower_localized_name: Option<String>,
+    lower_generic_name: Option<String>,
+    lower_localized_generic_name: Option<String>,
     pub file_name: String,
     pub exec: String,
     pub icon: Option<String>,
@@ -129,11 +135,20 @@ impl Entry {
                 localized_name.as_deref(),
                 icon,
             );
+            let lower_name = name.to_lowercase();
+            let lower_localized_name = localized_name.as_deref().map(str::to_lowercase);
+            let lower_generic_name = generic_name.as_deref().map(str::to_lowercase);
+            let lower_localized_generic_name =
+                localized_generic_name.as_deref().map(str::to_lowercase);
             Some(Self {
                 name,
                 localized_name,
                 generic_name,
                 localized_generic_name,
+                lower_name,
+                lower_localized_name,
+                lower_generic_name,
+                lower_localized_generic_name,
                 file_name,
                 exec,
                 icon: icon.and_then(find_icon),
@@ -279,11 +294,11 @@ impl DesktopEntryCache {
         println!("Finished building cache with {} items", len_after);
     }
 
-    fn get_match(name: &str, entry_value: String) -> Option<MatchKind> {
+    fn get_match(name: &str, entry_value: &str) -> Option<MatchKind> {
         if entry_value == name {
             Some(MatchKind::Exact)
         } else {
-            let sim = strsim::jaro_winkler(name, &entry_value);
+            let sim = strsim::jaro_winkler(name, entry_value);
             if sim >= SIMILARITY_THRESHHOLD {
                 Some(MatchKind::Similar(sim))
             } else {
@@ -301,17 +316,19 @@ impl DesktopEntryCache {
         T: IntoIterator<Item = usize>,
     {
         let mut matches = Vec::new();
-        for id in set.into_iter() {
+        'outer: for id in set.into_iter() {
             let entry = &self.entries[id];
             macro_rules! check {
                 ($field:expr, $match_field:ident) => {
                     if let Some(value) = $field {
-                        if let Some(match_) = Self::get_match(&name, value.to_lowercase()) {
-                            matches.push(Match {
-                                id,
-                                field: MatchField::$match_field(match_),
-                            });
-                            continue;
+                        for word in value.split(' ') {
+                            if let Some(match_) = Self::get_match(&name, word) {
+                                matches.push(Match {
+                                    id,
+                                    field: MatchField::$match_field(match_),
+                                });
+                                continue 'outer;
+                            }
                         }
                     }
                 };
@@ -319,10 +336,13 @@ impl DesktopEntryCache {
             // TODO: a value with lower priority could still get a higher score, to
             //       accommodate for this we should chose the maximum score of these
             //       instead of shortcircuting on the first match.
-            check!(entry.localized_name.as_ref(), LocalizedName);
-            check!(Some(&entry.name), Name);
-            check!(entry.localized_generic_name.as_ref(), LocalizedGenericName);
-            check!(entry.generic_name.as_ref(), GenericName);
+            check!(entry.lower_localized_name.as_ref(), LocalizedName);
+            check!(Some(&entry.lower_name), Name);
+            check!(
+                entry.lower_localized_generic_name.as_ref(),
+                LocalizedGenericName
+            );
+            check!(entry.lower_generic_name.as_ref(), GenericName);
             check!(Some(&entry.file_name), FileName);
         }
         matches
