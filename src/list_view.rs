@@ -174,7 +174,7 @@ impl ListView {
         (idx as u32 * self.layout.item_height) as i32
     }
 
-    pub fn set_items<T: Render + 'static>(&mut self, items: &[T], search: &str) {
+    pub fn set_items<T: Render + 'static>(&mut self, items: &[T], search: &str, no_draw: bool) {
         self.items = items
             .iter()
             .map(|x| {
@@ -183,7 +183,9 @@ impl ListView {
             })
             .collect();
         if self.items.is_empty() {
-            self.draw();
+            if !no_draw {
+                self.draw();
+            }
             return;
         }
         let visible = (self.layout.window.height / self.layout.item_height) as i32;
@@ -199,7 +201,9 @@ impl ListView {
         self.scroll = 0;
         self.selected = 0;
         self.resize_scrollbar();
-        self.draw();
+        if !no_draw {
+            self.draw();
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -270,6 +274,9 @@ impl ListView {
             let (background, icon, mut text) = self.layout.get_item_rects(idx);
             self.dc
                 .rect(&background)
+                // XXX: this will always ebe highlit, indicating it would be
+                // enter action, even if pressing enter would interact with the
+                // smart content.
                 .color(if idx == self.selected {
                     colors::LIST_SELECTED_BACKGROUND
                 } else if idx % 2 == 0 {
@@ -390,7 +397,7 @@ impl ListView {
             Key::Enter => send_signal(
                 &self.display,
                 &self.signal_sender,
-                Signal::Commit(self.selected),
+                Signal::Commit(Some(self.selected)),
             ),
             Key::Escape => send_signal(&self.display, &self.signal_sender, Signal::Quit),
             Key::Tab => send_signal(&self.display, &self.signal_sender, Signal::SwapFocus),
@@ -405,6 +412,10 @@ impl ListView {
             }
             _ => {}
         }
+    }
+
+    pub fn hit_test(&self, x: i32, y: i32) -> bool {
+        self.layout.window.at(self.layout.reparent).contains(x, y)
     }
 
     pub fn button_press(&mut self, event: &XButtonPressedEvent) {
@@ -442,7 +453,8 @@ impl ListView {
                 }
             }
             Button1 => {
-                let click_idx = self.position_to_item_index(self.scroll + event.y);
+                let y = event.y - self.layout.reparent.1;
+                let click_idx = self.position_to_item_index(self.scroll + y);
                 if click_idx >= self.items.len() {
                     // We may have less items than the widget is high but will allow
                     // clicks anywhere on the widget.
@@ -457,7 +469,7 @@ impl ListView {
                     send_signal(
                         &self.display,
                         &self.signal_sender,
-                        Signal::Commit(self.click_item),
+                        Signal::Commit(Some(self.click_item)),
                     );
                 }
                 self.click_time = event.time;

@@ -6,7 +6,8 @@ use crate::{
     entry::Entry,
     input::KeyEvent,
     layout::{Layout, Rectangle},
-    list_view::ListView,
+    list_view::{ListView, Render},
+    smart_content::{ReadyContent, SmartContent},
     x::{display::ScopedInputGrab, Display, Window},
 };
 use std::{
@@ -59,20 +60,24 @@ fn main_screen_size(display: &Display) -> (u32, u32) {
     }
 }
 
-pub struct UI {
+pub struct Ui {
     display: Display,
     pub main_window: Window,
     entry: Entry,
-    pub list_view: ListView,
+    // The list view was designed for a variable layout, and just adding a
+    // second one is quite painless.
+    full_list_view: ListView,
+    reduced_list_view: ListView,
+    pub smart_content: SmartContent,
+    showing_smart_content: bool,
     input_focus: bool,
     width: i32,
     height: i32,
-    valid_click_rect: Rectangle,
     signal_sender: Sender<Signal>,
     _input_grab: ScopedInputGrab,
 }
 
-impl UI {
+impl Ui {
     pub fn new(
         display: &Display,
         signal_sender: Sender<Signal>,
@@ -80,11 +85,21 @@ impl UI {
         config: &Config,
     ) -> Self {
         let screen_size = main_screen_size(display);
-        let layout = Layout::new(screen_size.0, screen_size.1, config);
-        let width = layout.window.width;
-        let height = layout.window.height;
         let visual_info = display.match_visual_info(32, TrueColor).unwrap();
         let colormap = display.create_colormap(visual_info.visual, AllocNone);
+
+        let window_size = Layout::window_size(screen_size.0, screen_size.1, config);
+        let mut dc = DrawingContext::create(display, window_size.0, window_size.1, &visual_info);
+
+        let layout = Layout::new(screen_size.0, screen_size.1, config, |font| {
+            let layout = dc.layout();
+            layout.set_font_description(Some(font));
+            layout.set_text("Mgj가|^");
+            layout.size().1 / pango::SCALE
+        });
+        let width = layout.window.width;
+        let height = layout.window.height;
+
         let main_window = Window::builder(display)
             .size(width, height)
             .position(
@@ -115,27 +130,46 @@ impl UI {
         );
         entry.window.reparent(main_window, p.0, p.1);
 
-        let p = layout.list_view.reparent;
-        let valid_click_rect = Rectangle::new(
-            p.0,
-            p.1,
-            layout.list_view.window.width,
-            layout.list_view.window.height,
+        let p = layout.smart_content.reparent;
+        let smart_content = SmartContent::create(
+            display,
+            layout.smart_content,
+            &visual_info,
+            colormap,
+            config,
         );
-        let list_view = ListView::create(
+        smart_content.window.reparent(main_window, p.0, p.1);
+
+        let p = layout.full_list_view.reparent;
+        let full_list_view = ListView::create(
             display,
             signal_sender.clone(),
-            layout.list_view,
+            layout.full_list_view,
+            &visual_info,
+            colormap,
+            cache.clone(),
+            config,
+        );
+        full_list_view.window.reparent(main_window, p.0, p.1);
+
+        let p = layout.reduced_list_view.reparent;
+        let reduced_list_view = ListView::create(
+            display,
+            signal_sender.clone(),
+            layout.reduced_list_view,
             &visual_info,
             colormap,
             cache,
             config,
         );
-        list_view.window.reparent(main_window, p.0, p.1);
+        reduced_list_view.window.reparent(main_window, p.0, p.1);
 
         // Map all windows and draw background
         main_window.map_subwindows();
-        let mut dc = DrawingContext::create(display, width, height, &visual_info);
+        // Smart content is only visibe when there is something to show, and
+        // since we create the list view with its full size it would overlap.
+        smart_content.window.unmap();
+        reduced_list_view.window.unmap();
         dc.fill(colors::BACKGROUND);
         main_window.map_raised();
         dc.render(main_window, &Rectangle::new(0, 0, width, height));
@@ -146,20 +180,46 @@ impl UI {
             display: *display,
             main_window,
             entry,
-            list_view,
+            full_list_view,
+            reduced_list_view,
+            smart_content,
+            showing_smart_content: false,
             input_focus: true,
             width: width as i32,
             height: height as i32,
-            valid_click_rect,
             signal_sender,
             _input_grab: display.scoped_input_grab(main_window, ButtonPressMask),
+        }
+    }
+
+    fn layout(&mut self, show_smart_content: bool) {
+        if show_smart_content {
+            self.smart_content.window.map_raised();
+            self.reduced_list_view.window.map_raised();
+            self.full_list_view.window.unmap();
+        } else {
+            self.smart_content.window.unmap();
+            self.reduced_list_view.window.unmap();
+            self.full_list_view.window.map_raised();
+        }
+        self.showing_smart_content = show_smart_content;
+    }
+
+    pub fn list_view(&mut self) -> &mut ListView {
+        if self.showing_smart_content {
+            &mut self.reduced_list_view
+        } else {
+            &mut self.full_list_view
         }
     }
 
     pub fn redraw(&mut self) {
         self.entry.draw();
         self.entry.draw_cursor_and_selection();
-        self.list_view.draw();
+        self.list_view().draw();
+        if self.showing_smart_content {
+            self.smart_content.draw();
+        }
     }
 
     pub fn text_input(&mut self, text: &str) {
@@ -168,11 +228,33 @@ impl UI {
         }
     }
 
+    pub fn set_items<T: Render + 'static>(&mut self, items: &[T], search: &str) {
+        self.full_list_view
+            .set_items(items, search, self.showing_smart_content);
+        self.reduced_list_view
+            .set_items(items, search, !self.showing_smart_content);
+    }
+
+    pub fn set_smart_content(&mut self, content: Option<ReadyContent>) {
+        if let Some(text) = content {
+            self.smart_content.set(text);
+            self.layout(true);
+            self.smart_content.draw();
+        } else if self.showing_smart_content {
+            self.smart_content.window.unmap();
+            self.layout(false);
+        }
+    }
+
+    pub fn showing_useful_smart_content(&self) -> bool {
+        self.showing_smart_content && self.smart_content.is_useful()
+    }
+
     pub fn key_press(&mut self, event: KeyEvent) {
         if self.input_focus {
             self.entry.key_press(event);
         } else {
-            self.list_view.key_press(event);
+            self.list_view().key_press(event);
         }
     }
 
@@ -184,24 +266,26 @@ impl UI {
                 send_signal(&self.display, &self.signal_sender, Signal::Quit);
                 return;
             }
-            if event.x < self.valid_click_rect.x
-                || event.x >= self.valid_click_rect.x + self.valid_click_rect.width as i32
-                || event.y < self.valid_click_rect.y
-                || event.y >= self.valid_click_rect.y + self.valid_click_rect.height as i32
-            {
-                // Not inside the list window, we don't care about it.
-                return;
-            }
         }
-        // Translate from main window to list window.
-        event.x -= self.valid_click_rect.x;
-        event.y -= self.valid_click_rect.y;
-        self.list_view.button_press(event);
+        if self.entry.hit_test(event.x, event.y) {
+            self.entry.set_focused(true);
+            self.input_focus = true;
+            self.smart_content.set_selected(false);
+        } else if self.showing_smart_content && self.smart_content.hit_test(event.x, event.y) {
+            self.entry.set_focused(false);
+            self.input_focus = false;
+            self.smart_content.set_selected(true);
+        } else if self.list_view().hit_test(event.x, event.y) {
+            self.entry.set_focused(false);
+            self.input_focus = false;
+            self.list_view().button_press(event);
+            self.smart_content.set_selected(false);
+        }
     }
 
     pub fn swap_focus(&mut self) {
         self.input_focus = !self.input_focus;
-        if !self.input_focus && self.list_view.is_empty() {
+        if !self.input_focus && self.list_view().is_empty() {
             self.input_focus = true;
         } else {
             self.entry.set_focused(self.input_focus);
@@ -209,7 +293,7 @@ impl UI {
     }
 }
 
-impl Drop for UI {
+impl Drop for Ui {
     fn drop(&mut self) {
         self.main_window.unmap();
         self.main_window.destroy();

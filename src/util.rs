@@ -2,7 +2,11 @@ use libc::{
     _exit, c_char, close, dup2, execl, fork, open, setsid, waitpid, O_RDWR, STDERR_FILENO,
     STDIN_FILENO, STDOUT_FILENO,
 };
-use std::ffi::CString;
+use std::{
+    ffi::CString,
+    io::Write,
+    process::{Command, Stdio},
+};
 
 /// Launches and orphans the given command, making it a child of init and not
 /// ourself. Any errors are ignored.
@@ -45,4 +49,16 @@ pub fn launch_orphan(command: &str) {
         let mut s = 0;
         waitpid(pid, &mut s, 0);
     }
+}
+
+pub fn copy(text: &str) -> Result<(), std::io::Error> {
+    let mut process = Command::new("xclip")
+        .arg("-selection")
+        .arg("clipboard")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .spawn()?;
+    process.stdin.as_mut().unwrap().write_all(text.as_bytes())?;
+    process.wait()?;
+    Ok(())
 }

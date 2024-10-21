@@ -1,13 +1,19 @@
 use cairo::Pattern;
 use gio::{Cancellable, File, MemoryInputStream};
 use glib::Bytes;
-use librsvg::{CairoRenderer, Loader, SvgHandle};
+use rsvg::{CairoRenderer, Loader, SvgHandle};
 
 use crate::config::icon_search_path;
 
 pub mod resources {
     pub static SEARCH_ICON: &[u8] = include_bytes!("../res/search.svg");
     pub static HISTORY_ICON: &[u8] = include_bytes!("../res/history.svg");
+    pub static LANGUAGE_ICON: &[u8] = include_bytes!("../res/language.svg");
+    pub static FOLDER_OPEN_ICON: &[u8] = include_bytes!("../res/folder_open.svg");
+    pub static TERMINAL_ICON: &[u8] = include_bytes!("../res/terminal.svg");
+    pub static CALCULATE_ICON: &[u8] = include_bytes!("../res/calculate.svg");
+    pub static CONVERSION_PATH_ICON: &[u8] = include_bytes!("../res/conversion_path.svg");
+    pub static WARNING_ICON: &[u8] = include_bytes!("../res/warning.svg");
 }
 
 pub struct Svg {

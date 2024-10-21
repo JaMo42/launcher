@@ -8,6 +8,7 @@ use x::Display;
 mod app;
 mod cache;
 mod config;
+mod content;
 mod draw;
 mod entry;
 mod history;
@@ -16,7 +17,10 @@ mod layout;
 mod list_view;
 mod res;
 mod search;
+mod smart_content;
+mod static_units;
 mod ui;
+mod units;
 mod util;
 mod x;
 

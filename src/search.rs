@@ -5,6 +5,7 @@ use crate::{
     ui::colors,
 };
 use std::{
+    cell::OnceCell,
     cmp::Ordering,
     collections::HashMap,
     os::unix::prelude::PermissionsExt,
@@ -275,7 +276,7 @@ pub fn search(
 }
 
 /// Sorts the search results. If any of the results is in the history its score
-/// heavyily adjusted toward how recent it is in the history.
+/// heavily adjusted toward how recent it is in the history.
 pub fn sort_search_results(results: &mut [SearchMatch], history: &HashMap<usize, usize>) {
     for result in results.iter_mut() {
         if let SearchMatchKind::DeskopEntry(data) = &result.unwrap() {
@@ -298,12 +299,9 @@ pub fn sort_search_results(results: &mut [SearchMatch], history: &HashMap<usize,
 
 fn highlight_match(match_str: &str, search: &str) -> String {
     const END_HIGHLIGHT: &str = "</span>";
-    static mut BEGIN_HIGHLIGHT: String = String::new();
-    unsafe {
-        if BEGIN_HIGHLIGHT.is_empty() {
-            BEGIN_HIGHLIGHT = format!("<span color=\"{}\">", colors::LIST_MATCH_HIGHLIGHT);
-        }
-    }
+    let cell = OnceCell::new();
+    let begin_highlight =
+        cell.get_or_init(|| format!("<span color=\"{}\">", colors::LIST_MATCH_HIGHLIGHT));
     // Assume 75% of chars in search resulting in this: `<span color="#RRGGBB">X</span>`
     let mut result =
         String::with_capacity(match_str.len() + 30 * search.chars().count() * 75 / 100);
@@ -316,7 +314,7 @@ fn highlight_match(match_str: &str, search: &str) -> String {
         if c.to_ascii_lowercase() == s {
             if !is_highlight {
                 is_highlight = true;
-                result.push_str(unsafe { &BEGIN_HIGHLIGHT });
+                result.push_str(begin_highlight);
             }
             if let Some(next_s) = search_chars.next() {
                 s = next_s.to_ascii_lowercase();

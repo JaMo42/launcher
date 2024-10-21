@@ -6,6 +6,7 @@ use crate::{
 use cairo::{Context, LinearGradient, Operator, Surface};
 use cairo_sys::cairo_xlib_surface_create;
 use pango::{EllipsizeMode, FontDescription, Layout};
+use pangocairo::functions::{create_layout, show_layout};
 use x11::xlib::{
     Drawable, XCopyArea, XCreateGC, XCreatePixmap, XFreeGC, XFreePixmap, XVisualInfo, GC,
 };
@@ -42,7 +43,7 @@ impl DrawingContext {
         };
         let context = Context::new(&surface).unwrap();
         context.set_operator(Operator::Source);
-        let layout = pangocairo::create_layout(&context);
+        let layout = create_layout(&context);
         let gc = unsafe { XCreateGC(display.as_raw(), pixmap, 0, std::ptr::null_mut()) };
         Self {
             pixmap,
@@ -443,6 +444,13 @@ impl<'a> TextBuilder<'a> {
         self
     }
 
+    pub fn right_align(mut self) -> Self {
+        let (mut width, _) = self.dc.layout.size();
+        width /= pango::SCALE;
+        self.rect.x += self.rect.width as i32 - width;
+        self
+    }
+
     pub fn center_height(mut self) -> Self {
         let (_, mut height) = self.dc.layout.size();
         height /= pango::SCALE;
@@ -450,10 +458,17 @@ impl<'a> TextBuilder<'a> {
         self
     }
 
-    pub fn draw(self) {
+    pub fn draw(self) -> Rectangle {
         self.dc
             .context
             .move_to(self.rect.x as f64, self.rect.y as f64);
-        pangocairo::show_layout(&self.dc.context, &self.dc.layout);
+        show_layout(&self.dc.context, &self.dc.layout);
+        let (width, height) = self.dc.layout.size();
+        Rectangle::new(
+            self.rect.x,
+            self.rect.y,
+            (width / pango::SCALE) as u32,
+            (height / pango::SCALE) as u32,
+        )
     }
 }

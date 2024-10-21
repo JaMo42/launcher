@@ -1,15 +1,19 @@
 use crate::{
     cache::DesktopEntryCache,
     config::Config,
+    content::{ClassificationError, Content, ContentClassifier},
     history::History,
     input::{self, InputContext},
     search::{self, sort_search_results, SearchMatch, SearchMatchKind},
-    ui::UI,
-    util::launch_orphan,
+    smart_content::{Action, ReadyContent},
+    ui::Ui,
+    units::{convert, default_unit_mapping, Unit},
+    util::{copy, launch_orphan},
     x::Display,
 };
 use std::{
     borrow::Borrow,
+    collections::HashMap,
     ops::Deref,
     sync::{
         mpsc::{channel, Receiver, Sender},
@@ -25,7 +29,7 @@ pub enum Signal {
     CursorPositionChanged((i32, i32)),
     SwapFocus,
     Quit,
-    Commit(usize),
+    Commit(Option<usize>),
     DeleteEntry(usize),
 }
 
@@ -44,19 +48,21 @@ pub fn send_signal(display: &Display, sender: &Sender<Signal>, signal: Signal) {
 pub struct App {
     display: Display,
     signal_receiver: Receiver<Signal>,
-    ui: UI,
+    ui: Ui,
     ic: InputContext,
     cache: Arc<Mutex<DesktopEntryCache>>,
     search_results: Vec<SearchMatch>,
     history: History,
     search_text: String,
+    content_classifier: ContentClassifier,
+    default_unit_mapping: HashMap<Unit, Unit>,
 }
 
 impl App {
     pub fn new(display: Display, cache: Arc<Mutex<DesktopEntryCache>>, config: Config) -> Self {
         let history = History::load(cache.lock().unwrap().borrow(), config.history_entries);
         let (signal_sender, signal_receiver) = channel();
-        let ui = UI::new(&display, signal_sender, cache.clone(), &config);
+        let ui = Ui::new(&display, signal_sender, cache.clone(), &config);
         let ic = input::init(&display, &ui.main_window);
         Self {
             display,
@@ -67,12 +73,58 @@ impl App {
             search_results: Vec::new(),
             history,
             search_text: String::new(),
+            content_classifier: ContentClassifier::new(config.smart_content_options),
+            default_unit_mapping: default_unit_mapping(&config.default_currency).mapping,
         }
+    }
+
+    fn process_smart_content(
+        &self,
+        classified: Result<Option<Content>, ClassificationError>,
+        s: &str,
+    ) -> Option<ReadyContent> {
+        match classified {
+            Ok(Some(Content::BasicExpression(value))) => ReadyContent::Expression(value),
+            Ok(Some(Content::LeadExpression(maybe_value))) => match maybe_value {
+                Ok(value) => ReadyContent::Expression(value),
+                Err(error) => ReadyContent::Error(format!("{}", error)),
+            },
+            Ok(Some(Content::DefaultConversion(value, from))) => {
+                if let Some(to) = self.default_unit_mapping.get(&from) {
+                    let value = convert(value, from.into(), to.clone().into());
+                    ReadyContent::Conversion(value, from.into(), to.clone().into())
+                } else {
+                    ReadyContent::Error(format!("No default conversion for {from}"))
+                }
+            }
+            Ok(Some(Content::Conversion(value, maybe_from, to))) => {
+                if let Some(from) =
+                    maybe_from.or_else(|| self.default_unit_mapping.get(&to).copied())
+                {
+                    let value = convert(value, from.into(), to.into());
+                    ReadyContent::Conversion(value, from.into(), to.into())
+                } else {
+                    ReadyContent::Error(format!("No default conversion for {to}"))
+                }
+            }
+            Ok(Some(Content::Path)) => {
+                let path = &s[1..].trim();
+                ReadyContent::Action(Action::Path, "Open", path.to_string())
+            }
+            Ok(Some(Content::URL)) => ReadyContent::Action(Action::Web, "Open", s.to_string()),
+            Ok(Some(Content::Command)) => {
+                let command = &s[1..].trim();
+                ReadyContent::Action(Action::Run, "Run", command.to_string())
+            }
+            Ok(None) => return None,
+            Err(error) => ReadyContent::Error(format!("{}", error)),
+        }
+        .into()
     }
 
     pub fn run(&mut self) {
         if !self.history.is_empty() {
-            self.ui.list_view.set_items(self.history.entries(), "");
+            self.ui.set_items(self.history.entries(), "");
         }
         self.ui.redraw();
         self.display.sync(true);
@@ -92,13 +144,28 @@ impl App {
                         if text == self.search_text {
                             continue;
                         }
+                        ///////////////////////////////////////////////////////
+                        // Smart Content
+                        self.ui.set_smart_content(
+                            self.process_smart_content(
+                                self.content_classifier.classify(&text),
+                                &text,
+                            ),
+                        );
+                        let text = if text.starts_with('$') {
+                            text[1..].trim().to_string()
+                        } else {
+                            text
+                        };
+                        ///////////////////////////////////////////////////////
+                        // Search
                         if text.is_empty() {
                             self.search_text.clear();
                             self.search_results.clear();
                             if self.history.is_empty() {
-                                self.ui.list_view.set_items::<SearchMatch>(&[], "");
+                                self.ui.set_items::<SearchMatch>(&[], "");
                             } else {
-                                self.ui.list_view.set_items(self.history.entries(), "");
+                                self.ui.set_items(self.history.entries(), "");
                             }
                             continue;
                         }
@@ -117,7 +184,7 @@ impl App {
                             &mut self.search_results,
                             self.history.borrow().desktop_ids(),
                         );
-                        self.ui.list_view.set_items(&self.search_results, &text);
+                        self.ui.set_items(&self.search_results, &text);
                         self.search_text = text;
                     }
                     Signal::CursorPositionChanged((x, y)) => {
@@ -130,15 +197,39 @@ impl App {
                         running = false;
                     }
                     Signal::Commit(id) => {
-                        if let Some(exec) = self.get_exec(id) {
-                            self.launch(exec);
-                            if self.search_results.is_empty() {
-                                self.history.renew(id);
+                        // If there is smart content, pressing enter with the
+                        // entry focused should interact with it.
+                        if let Some(id) = id.or_else(|| {
+                            if self.ui.showing_useful_smart_content() {
+                                None
                             } else {
-                                self.history.add(
-                                    self.search_results[id].unwrap(),
-                                    self.cache.lock().unwrap().borrow(),
-                                );
+                                Some(0)
+                            }
+                        }) {
+                            if let Some(exec) = self.get_exec(id) {
+                                self.launch(exec);
+                                if self.search_results.is_empty() {
+                                    self.history.renew(id);
+                                } else {
+                                    self.history.add(
+                                        self.search_results[id].unwrap(),
+                                        self.cache.lock().unwrap().borrow(),
+                                    );
+                                }
+                            }
+                            running = false;
+                        } else if let Some(action) = self.ui.smart_content.commit() {
+                            dbg!(&action);
+                            use crate::smart_content::SmartContentCommitAction::*;
+                            match action {
+                                Copy(text) => {
+                                    if let Err(error) = copy(&text) {
+                                        eprintln!("Copy error: {error}");
+                                    }
+                                }
+                                OpenPath(path) => launch_orphan(&format!("xdg-open {path}")),
+                                OpenWeb(url) => launch_orphan(&format!("xdg-open {url}")),
+                                Run(command) => launch_orphan(&command),
                             }
                             running = false;
                         }
@@ -147,8 +238,7 @@ impl App {
                         if self.search_results.is_empty() && self.search_text.is_empty() {
                             self.history.delete(id, self.cache.lock().unwrap().borrow());
                         }
-                        self.ui.list_view.set_items(self.history.entries(), "");
-                        self.ui.list_view.draw();
+                        self.ui.set_items(self.history.entries(), "");
                     }
                 }
                 continue;

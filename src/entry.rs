@@ -71,6 +71,9 @@ impl Entry {
     }
 
     pub fn set_focused(&mut self, focused: bool) {
+        if focused == self.is_focused {
+            return;
+        }
         self.is_focused = focused;
         self.draw();
         if focused {
@@ -191,6 +194,8 @@ impl Entry {
     }
 
     pub fn text_input(&mut self, text: &str) {
+        // TODO: since we have math expressions now it would be nice if
+        // parentheses wrapped the selection instead of deleting it
         if self.selection.is_some() {
             self.delete_selection();
         }
@@ -265,6 +270,7 @@ impl Entry {
     }
 
     pub fn key_press(&mut self, event: KeyEvent) {
+        // TODO: pasting
         if self.text.is_empty() {
             match event.key {
                 Key::Escape | Key::CtrlC => {
@@ -273,7 +279,7 @@ impl Entry {
                 Key::Tab | Key::Down => {
                     send_signal(&self.display, &self.signal_sender, Signal::SwapFocus)
                 }
-                Key::Enter => send_signal(&self.display, &self.signal_sender, Signal::Commit(0)),
+                Key::Enter => send_signal(&self.display, &self.signal_sender, Signal::Commit(None)),
                 _ => {}
             }
             return;
@@ -356,7 +362,7 @@ impl Entry {
                 return;
             }
             Key::Enter => {
-                send_signal(&self.display, &self.signal_sender, Signal::Commit(0));
+                send_signal(&self.display, &self.signal_sender, Signal::Commit(None));
                 return;
             }
             Key::Tab => send_signal(&self.display, &self.signal_sender, Signal::SwapFocus),
@@ -375,6 +381,11 @@ impl Entry {
             }
         }
         self.cursor_changed();
+    }
+
+    /// x, y are in window coordinates
+    pub fn hit_test(&self, x: i32, y: i32) -> bool {
+        self.layout.window.at(self.layout.reparent).contains(x, y)
     }
 }
 

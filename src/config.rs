@@ -1,6 +1,9 @@
+use crate::{
+    content::{ContentOptions, UrlMode},
+    history::DEFAULT_MAX_SIZE,
+    units::user_currency,
+};
 use serde::Deserialize;
-
-use crate::history::DEFAULT_MAX_SIZE;
 
 static mut ICON_THEME: String = String::new();
 
@@ -13,11 +16,15 @@ pub struct ParsedConfig {
     entry_font: Option<String>,
     list_font: Option<String>,
     list_empty_font: Option<String>,
+    smart_content_font: Option<String>,
     icon_theme: Option<String>,
     scroll_speed: Option<i32>,
     locale: Option<String>,
     scroll_bar_width: Option<u32>,
     history_entries: Option<usize>,
+    default_currency: Option<String>,
+    smart_content_urls: Option<String>,
+    smart_content_dynamic_conversions: Option<bool>,
 }
 
 #[derive(Clone)]
@@ -29,10 +36,13 @@ pub struct Config {
     pub entry_font: String,
     pub list_font: String,
     pub list_empty_font: String,
+    pub smart_content_font: String,
     pub scroll_speed: i32,
     pub locale: Option<String>,
     pub scroll_bar_width: u32,
     pub history_entries: usize,
+    pub default_currency: String,
+    pub smart_content_options: ContentOptions,
 }
 
 impl Config {
@@ -51,6 +61,15 @@ impl Config {
             let theme_name = parsed.icon_theme.unwrap_or_else(|| "Papirus".to_string());
             ICON_THEME = find_icon_theme(theme_name);
         }
+        let url_mode = match parsed.smart_content_urls.as_deref() {
+            Some("none") | None => UrlMode::None,
+            Some("http") => UrlMode::Http,
+            Some("all") | Some("loose") => UrlMode::Loose,
+            Some(x) => {
+                eprintln!("Invalid URL mode: {x}");
+                UrlMode::Loose
+            }
+        };
         Config {
             window_width_percent: parsed.window_width_percent.unwrap_or(50),
             window_height_percent: parsed.window_height_percent.unwrap_or(50),
@@ -61,10 +80,21 @@ impl Config {
             list_empty_font: parsed
                 .list_empty_font
                 .unwrap_or_else(|| "sans 48".to_string()),
+            smart_content_font: parsed
+                .smart_content_font
+                .unwrap_or_else(|| "sans 32".to_string()),
             scroll_speed: parsed.scroll_speed.unwrap_or(10),
             locale: parsed.locale,
             scroll_bar_width: parsed.scroll_bar_width.unwrap_or(8),
             history_entries: parsed.history_entries.unwrap_or(DEFAULT_MAX_SIZE),
+            default_currency: parsed
+                .default_currency
+                .unwrap_or_else(|| user_currency())
+                .to_lowercase(),
+            smart_content_options: ContentOptions {
+                dynamic_conversions: parsed.smart_content_dynamic_conversions.unwrap_or(true),
+                url_mode,
+            },
         }
     }
 }

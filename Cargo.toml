@@ -6,18 +6,24 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cairo-rs = { version = "0.16.3", features = ["xlib"] }
-cairo-sys-rs = "0.16.3"
+cairo-rs = { version = "0.20", features = ["xlib"] }
+cairo-sys-rs = "0.20"
+chrono = "0.4.38"
 clap = { version = "4.0.23", features = ["derive"] }
 freedesktop-desktop-entry = "0.5.0"
-gio = "0.16.7"
-glib = "0.16.7"
+gio = "0.20"
+glib = "0.20"
 libc = "0.2.138"
-librsvg = { version="2.55.1", git="https://gitlab.gnome.org/GNOME/librsvg" }
-pango = "0.16.3"
-pangocairo = "0.16.3"
+librsvg = { version="2.59.1", git="https://gitlab.gnome.org/GNOME/librsvg" }
+meval = "0.2.0"
+pango = "0.20"
+pangocairo = "0.20"
+regex = "1.11.0"
+reqwest = { version = "0.12.8", features = ["blocking"] }
 ron = "0.8.0"
 serde = { version = "1.0.151", features = ["derive"] }
+serde_json = "1.0.132"
+slotmap = "1.0.7"
 strsim = "0.10.0"
 toml = "0.5.10"
 x11 = "2.19.1"

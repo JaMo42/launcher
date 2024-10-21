@@ -311,7 +311,7 @@ impl DesktopEntryCache {
                     }
                 };
             }
-            // TODO: a value with lower prioty could still get a higher score, to
+            // TODO: a value with lower priority could still get a higher score, to
             //       accommodate for this we should chose the maximum score of these
             //       instead of shortcircuting on the first match.
             check!(entry.localized_name.as_ref(), LocalizedName);
