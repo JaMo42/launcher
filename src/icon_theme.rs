@@ -27,8 +27,6 @@ fn find_icon_dir(name: &str) -> Option<String> {
     }
     let xdg_data_dirs = match var("XDG_DATA_DIRS") {
         Ok(dirs) => dirs,
-        // XXX: for desktop entries local comes first, but I have no idea why
-        //      I did it like that, this seems better to me now.
         Err(_) => "/usr/share/:/usr/local/share/".to_string(),
     };
     for dir in xdg_data_dirs.split(':') {

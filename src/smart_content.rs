@@ -8,6 +8,7 @@ use crate::{
     res::{resources, Svg},
     ui::colors,
     units::Unit,
+    util::copy,
     x::{Display, Window},
 };
 use pango::FontDescription;
@@ -174,6 +175,17 @@ impl SmartContent {
         self.layout.window.at(self.layout.reparent).contains(x, y)
     }
 
+    fn copy(&self) -> bool {
+        match &self.content {
+            ReadyContent::Expression(value) => copy(&format!("{value}")),
+            ReadyContent::Conversion(result, _, _) => copy(&format!("{result}")),
+            _ => {
+                return false;
+            }
+        }
+        true
+    }
+
     pub fn set_selected(&mut self, selected: bool) {
         let was_selected = self.selected;
         if selected {
@@ -182,7 +194,7 @@ impl SmartContent {
             self.selected = false;
         }
         if was_selected {
-            self.showing_copied = true;
+            self.showing_copied = self.copy();
         }
         if self.selected != was_selected {
             self.draw();

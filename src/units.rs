@@ -9,9 +9,6 @@ use std::{
     mem::discriminant,
 };
 
-// XXX: could  have just mapped strings to rates and inserted both name and
-//      code but I guess this is more flexible and I don't to remove it again.
-
 new_key_type! {
     pub struct CurrencyKey;
 }
