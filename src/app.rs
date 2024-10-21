@@ -4,8 +4,10 @@ use crate::{
     content::{ClassificationError, Content, ContentClassifier},
     history::History,
     input::{self, InputContext},
-    search::{self, search_path_exact_match, sort_search_results, SearchMatch, SearchMatchKind},
-    smart_content::{Action, ReadyContent},
+    search::{
+        self, search_path_for_exact_match, sort_search_results, SearchMatch, SearchMatchKind,
+    },
+    smart_content::{Action, ReadyContent, SmartContentCommitAction},
     ui::Ui,
     units::{convert, default_unit_mapping, Unit},
     util::{copy, launch_orphan},
@@ -141,51 +143,7 @@ impl App {
                 }
                 match maybe_signal.unwrap() {
                     Signal::SearchTextChanged(text) => {
-                        if text == self.search_text {
-                            continue;
-                        }
-                        ///////////////////////////////////////////////////////
-                        // Smart Content
-                        self.ui.set_smart_content(
-                            self.process_smart_content(
-                                self.content_classifier.classify(&text),
-                                &text,
-                            ),
-                        );
-                        let text = if text.starts_with('$') {
-                            text[1..].trim().to_string()
-                        } else {
-                            text
-                        };
-                        ///////////////////////////////////////////////////////
-                        // Search
-                        if text.is_empty() {
-                            self.search_text.clear();
-                            self.search_results.clear();
-                            if self.history.is_empty() {
-                                self.ui.set_items::<SearchMatch>(&[], "");
-                            } else {
-                                self.ui.set_items(self.history.entries(), "");
-                            }
-                            continue;
-                        }
-                        // Only searching for a subset with a short search text will likely
-                        // results in not finding things we want to find with the current text.
-                        if self.search_text.len() >= 3 && text.starts_with(&self.search_text) {
-                            self.search_results = search::search(
-                                &text,
-                                self.cache.clone(),
-                                Some(std::mem::take(&mut self.search_results)),
-                            );
-                        } else {
-                            self.search_results = search::search(&text, self.cache.clone(), None);
-                        }
-                        sort_search_results(
-                            &mut self.search_results,
-                            self.history.borrow().desktop_ids(),
-                        );
-                        self.ui.set_items(&self.search_results, &text);
-                        self.search_text = text;
+                        self.on_text_changed(text);
                     }
                     Signal::CursorPositionChanged((x, y)) => {
                         self.ic.set_cursor_position(x, y);
@@ -219,40 +177,7 @@ impl App {
                             }
                             running = false;
                         } else if let Some(action) = self.ui.smart_content.commit() {
-                            use crate::smart_content::SmartContentCommitAction::*;
-                            match action {
-                                Copy(text) => {
-                                    copy(&text);
-                                }
-                                OpenPath(path) => launch_orphan(&format!("xdg-open {path}")),
-                                OpenWeb(url) => 'out: {
-                                    // We are a lot looser with URLs than
-                                    // xdg-open (at least in loose URL mod), so
-                                    // we really want to open it manually.
-                                    if let Ok(browser) = std::env::var("BROWSER") {
-                                        launch_orphan(&format!("{browser} {url}"))
-                                    } else if url.starts_with("http") {
-                                        launch_orphan(&format!("xdg-open {url}"))
-                                    } else {
-                                        println!(
-                                            "$BROWSER not set nad URL doesn't look xdg-openable; trying some common browsers"
-                                        );
-                                        for browser in
-                                            ["firefox", "chromium", "google-chrome", "epiphany"]
-                                        {
-                                            println!("  {browser}");
-                                            if search_path_exact_match(browser) {
-                                                println!("   -> Found");
-                                                launch_orphan(&format!("{browser} {url}"));
-                                                break 'out;
-                                            }
-                                        }
-                                        println!("None found, trying xdg-open");
-                                        launch_orphan(&format!("xdg-open {url}"));
-                                    }
-                                }
-                                Run(command) => launch_orphan(&command),
-                            }
+                            self.do_smart_content_commit_action(action);
                             running = false;
                         }
                     }
@@ -287,6 +212,51 @@ impl App {
         self.history.store();
     }
 
+    fn on_text_changed(&mut self, text: String) {
+        if text == self.search_text {
+            return;
+        }
+        ///////////////////////////////////////////////////////////////////////
+        // Smart Content
+        self.ui.set_smart_content(
+            self.process_smart_content(self.content_classifier.classify(&text), &text),
+        );
+        let text = if text.starts_with('$') {
+            text[1..].trim().to_string()
+        } else {
+            text
+        };
+        ///////////////////////////////////////////////////////////////////////
+        // Search
+        if text.is_empty() {
+            self.search_text.clear();
+            self.search_results.clear();
+            if self.history.is_empty() {
+                self.ui.set_items::<SearchMatch>(&[], "");
+            } else {
+                self.ui.set_items(self.history.entries(), "");
+            }
+            return;
+        }
+        // Only searching for a subset with a short search text will likely
+        // results in not finding things we want to find with the current text.
+        if self.search_text.len() >= 3 && text.starts_with(&self.search_text) {
+            self.search_results = search::search(
+                &text,
+                self.cache.clone(),
+                Some(std::mem::take(&mut self.search_results)),
+            );
+        } else {
+            self.search_results = search::search(&text, self.cache.clone(), None);
+        }
+        sort_search_results(
+            &mut self.search_results,
+            self.history.borrow().desktop_ids(),
+        );
+        self.ui.set_items(&self.search_results, &text);
+        self.search_text = text;
+    }
+
     fn get_exec(&mut self, id: usize) -> Option<String> {
         if !self.search_results.is_empty() {
             Some(match &self.search_results[id].unwrap() {
@@ -313,5 +283,40 @@ impl App {
 
     fn launch(&self, exec: String) {
         launch_orphan(&exec);
+    }
+
+    fn do_smart_content_commit_action(&self, action: SmartContentCommitAction) {
+        use crate::smart_content::SmartContentCommitAction::*;
+        match action {
+            Copy(text) => {
+                copy(&text);
+            }
+            OpenPath(path) => launch_orphan(&format!("xdg-open {path}")),
+            OpenWeb(url) => 'out: {
+                // We are a lot looser with URLs than
+                // xdg-open (at least in loose URL mod), so
+                // we really want to open it manually.
+                if let Ok(browser) = std::env::var("BROWSER") {
+                    launch_orphan(&format!("{browser} {url}"))
+                } else if url.starts_with("http") {
+                    launch_orphan(&format!("xdg-open {url}"))
+                } else {
+                    println!(
+                                            "$BROWSER not set nad URL doesn't look xdg-openable; trying some common browsers"
+                                        );
+                    for browser in ["firefox", "chromium", "google-chrome", "epiphany"] {
+                        println!("  {browser}");
+                        if search_path_for_exact_match(browser) {
+                            println!("   -> Found");
+                            launch_orphan(&format!("{browser} {url}"));
+                            break 'out;
+                        }
+                    }
+                    println!("None found, trying xdg-open");
+                    launch_orphan(&format!("xdg-open {url}"));
+                }
+            }
+            Run(command) => launch_orphan(&command),
+        }
     }
 }

@@ -132,7 +132,7 @@ impl SmartContent {
             ReadyContent::Expression(e) => (&mut self.calculate_icon, e.to_string().into()),
             ReadyContent::Conversion(result, _, to) => (
                 &mut self.conversion_icon,
-                format!("{:.6} {}", result, to).into(),
+                format!("{} {}", result, to).into(),
             ),
             ReadyContent::Action(kind, action, what) => (
                 match kind {

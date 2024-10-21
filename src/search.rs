@@ -336,7 +336,7 @@ fn highlight_match(match_str: &str, search: &str) -> String {
     result
 }
 
-pub fn search_path_exact_match(name: &str) -> bool {
+pub fn search_path_for_exact_match(name: &str) -> bool {
     if let Ok(path) = std::env::var("PATH") {
         for path in path.split(':') {
             if let Ok(dir) = std::fs::read_dir(path) {
