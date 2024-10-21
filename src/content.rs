@@ -272,7 +272,6 @@ impl ContentClassifier {
                 _ => None,
             }
         }
-        // FIXME: these currently ignore any trailing text
         let mut tokens = lex(s);
         let mut index = 1;
         // TODO: allow a missing number? `cm to inch` should still display the
@@ -287,7 +286,7 @@ impl ContentClassifier {
         let mut have_conversion_word = false;
         let unit_b = match tokens.get(index) {
             Some(&Token::Text(t)) if t == "to" || t == "in" || t == "as" => {
-                if t == "in" && tokens.len() == index + 1 {
+                if t == "in" && tokens.len() == 3 {
                     Some(Unit::Distance(Distance::Inch))
                 } else {
                     index += 1;
@@ -308,6 +307,13 @@ impl ContentClassifier {
         if unit_a.is_some() && unit_b.is_none() && potentially_have_unit_b && !have_conversion_word
         {
             return Err(ClassificationError::InvalidToUnit);
+        }
+        let expected_token_count = 1
+            + unit_a.is_some() as usize
+            + unit_b.is_some() as usize
+            + have_conversion_word as usize;
+        if tokens.len() != expected_token_count {
+            return Ok(None);
         }
         if let Some(unit_b) = unit_b {
             return Ok(Some(Content::Conversion(num, unit_a, unit_b)));
