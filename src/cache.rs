@@ -219,16 +219,18 @@ impl DesktopEntryCache {
                     "/usr/local/share/applications".to_string(),
                 ]
             });
+        let mut ok = false;
+        let mut error = None;
         for data_dir in data_dirs {
             let dir_path = format!("{}/applications", data_dir);
             let dir = std::fs::read_dir(&dir_path);
-            if let Err(error) = dir {
-                eprintln!("Could not read {dir_path}: {error}");
-                self.error = Some(error);
+            if let Err(err) = dir {
+                eprintln!("Could not read {dir_path}: {err}");
+                error = Some(err);
                 continue;
             }
+            ok = true;
             println!("Indexing: {dir_path}");
-            self.error = None;
             for file in dir.unwrap().flatten() {
                 let file_name = if let Some(file_name) = file.file_name().to_str() {
                     file_name.to_owned()
@@ -258,6 +260,9 @@ impl DesktopEntryCache {
                     self.entries.push(entry);
                 }
             }
+        }
+        if !ok {
+            self.error = error;
         }
         let len_before = self.entries.len();
         println!("Deduplicating");
