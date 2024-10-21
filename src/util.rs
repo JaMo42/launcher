@@ -51,14 +51,38 @@ pub fn launch_orphan(command: &str) {
     }
 }
 
-pub fn copy(text: &str) -> Result<(), std::io::Error> {
-    let mut process = Command::new("xclip")
+pub fn copy(text: &str) {
+    fn innner(text: &str) -> Result<(), std::io::Error> {
+        let mut process = Command::new("xclip")
+            .arg("-selection")
+            .arg("clipboard")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()?;
+        process.stdin.as_mut().unwrap().write_all(text.as_bytes())?;
+        process.wait()?;
+        Ok(())
+    }
+    if let Err(error) = innner(text) {
+        eprintln!("Failed to copy to clipboard: {}", error);
+    }
+}
+
+pub fn paste() -> String {
+    // Since reading the clipboard doesn't require launching a background
+    // process we could do it ourselves, but it's still incredibly
+    // convoluted and annoying, and we already depend on xclip.
+    let output = match Command::new("xclip")
         .arg("-selection")
         .arg("clipboard")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .spawn()?;
-    process.stdin.as_mut().unwrap().write_all(text.as_bytes())?;
-    process.wait()?;
-    Ok(())
+        .arg("-o")
+        .output()
+    {
+        Ok(output) => output,
+        Err(error) => {
+            eprintln!("Failed to read clipboard: {}", error);
+            return String::new();
+        }
+    };
+    String::from_utf8_lossy(&output.stdout).to_string()
 }

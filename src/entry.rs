@@ -5,6 +5,7 @@ use crate::input::{Key, KeyEvent};
 use crate::layout::{EntryLayout, Rectangle};
 use crate::res::*;
 use crate::ui::colors;
+use crate::util::{copy, paste};
 use crate::x::{Display, Window};
 use pango::{EllipsizeMode, FontDescription};
 use std::sync::mpsc::Sender;
@@ -70,6 +71,14 @@ impl Entry {
 
     pub fn text(&self) -> String {
         self.text.iter().collect()
+    }
+
+    fn selection_range(&self) -> Option<(usize, usize)> {
+        self.selection.map(|sel| {
+            let start = usize::min(sel, self.cursor_position);
+            let end = usize::max(sel, self.cursor_position);
+            (start, end)
+        })
     }
 
     pub fn set_focused(&mut self, focused: bool) {
@@ -285,7 +294,6 @@ impl Entry {
     }
 
     pub fn key_press(&mut self, event: KeyEvent) {
-        // TODO: pasting
         if self.text.is_empty() {
             match event.key {
                 Key::Escape | Key::CtrlC => {
@@ -295,6 +303,20 @@ impl Entry {
                     send_signal(&self.display, &self.signal_sender, Signal::SwapFocus)
                 }
                 Key::Enter => send_signal(&self.display, &self.signal_sender, Signal::Commit(None)),
+                Key::CtrlV => {
+                    let text = paste();
+                    if !text.is_empty() {
+                        self.text_input(&text);
+                        self.draw();
+                        self.text_changed(false);
+                        if !self.text.is_empty()
+                            && self.cursor_position >= self.character_positions.len()
+                        {
+                            self.cursor_position = self.character_positions.len() - 1;
+                        }
+                        self.cursor_changed();
+                    }
+                }
                 _ => {}
             }
             return;
@@ -363,10 +385,34 @@ impl Entry {
                 self.cursor_position = self.text.len();
                 keep_selection = true;
             }
+            Key::CtrlV => {
+                let text = paste();
+                if !text.is_empty() {
+                    self.text_input(&text);
+                    text_changed = true;
+                }
+            }
             Key::CtrlC => {
-                self.text.clear();
-                self.cursor_position = 0;
-                text_changed = true;
+                if let Some((start, end)) = self.selection_range() {
+                    let text = self.text();
+                    let text = &text[start..end];
+                    copy(text);
+                    keep_selection = true;
+                } else {
+                    self.text.clear();
+                    self.cursor_position = 0;
+                    text_changed = true;
+                }
+            }
+            Key::CtrlX => {
+                if let Some((start, end)) = self.selection_range() {
+                    let text = self.text();
+                    let text = &text[start..end];
+                    copy(text);
+                    self.text.drain(start..end);
+                    self.cursor_position = start;
+                    text_changed = true;
+                }
             }
             Key::Escape => {
                 send_signal(&self.display, &self.signal_sender, Signal::Quit);

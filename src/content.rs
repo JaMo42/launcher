@@ -16,7 +16,7 @@ pub enum Content {
     Conversion(f64, Option<Unit>, Unit),
     // TODO:
     // The usefulness of this is dubious at the moment, since it requires a
-    // full path and there isn't even pasting.  Providing full suggestions
+    // full path ~~and there isn't even pasting~~.  Providing full suggestions
     // would probably blow the scope of a single-process program and would
     // require a background process to hold onto the file index.  Optionally
     // it could only index the users multimedia directories (Documents,

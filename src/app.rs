@@ -222,9 +222,7 @@ impl App {
                             use crate::smart_content::SmartContentCommitAction::*;
                             match action {
                                 Copy(text) => {
-                                    if let Err(error) = copy(&text) {
-                                        eprintln!("Copy error: {error}");
-                                    }
+                                    copy(&text);
                                 }
                                 OpenPath(path) => launch_orphan(&format!("xdg-open {path}")),
                                 OpenWeb(url) => launch_orphan(&format!("xdg-open {url}")),
