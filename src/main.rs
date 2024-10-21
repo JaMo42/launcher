@@ -12,6 +12,7 @@ mod content;
 mod draw;
 mod entry;
 mod history;
+mod icon_theme;
 mod input;
 mod layout;
 mod list_view;
@@ -23,7 +24,6 @@ mod ui;
 mod units;
 mod util;
 mod x;
-mod icon_theme;
 
 use app::App;
 use config::Config;

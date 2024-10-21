@@ -300,7 +300,7 @@ impl ContentClassifier {
             }
             _ => None,
         };
-        if unit_a.is_none() && potentially_have_unit_a && unit_b.is_none() {
+        if unit_a.is_none() && potentially_have_unit_a && unit_b.is_none() && !no_number {
             return Err(ClassificationError::InvalidUnit);
         }
         if unit_a.is_some() && unit_b.is_none() && potentially_have_unit_b && !have_conversion_word
