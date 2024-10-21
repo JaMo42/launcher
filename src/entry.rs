@@ -147,6 +147,11 @@ impl Entry {
     }
 
     pub fn draw_cursor_and_selection(&mut self) {
+        // I'm sometimes crashing here but don't know how to reproduce it
+        if self.cursor_position >= self.character_positions.len() {
+            eprintln!("CURSOR OUT OF BOUNDS");
+            self.cursor_position = self.character_positions.len() - 1;
+        }
         let x = self.character_positions[self.cursor_position];
         self.dc
             .rect(&Rectangle::new(

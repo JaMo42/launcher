@@ -64,9 +64,9 @@ impl Config {
         let theme_name = parsed.icon_theme.as_deref().unwrap_or("Papirus");
         ICON_THEME.with_borrow_mut(|t| *t = IconRegistry::new(theme_name).unwrap());
         let url_mode = match parsed.smart_content_urls.as_deref() {
-            Some("none") | None => UrlMode::None,
+            Some("none") => UrlMode::None,
             Some("http") => UrlMode::Http,
-            Some("all") | Some("loose") => UrlMode::Loose,
+            Some("all") | Some("loose") | None => UrlMode::Loose,
             Some(x) => {
                 eprintln!("Invalid URL mode: {x}");
                 UrlMode::Loose
