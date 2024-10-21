@@ -219,7 +219,6 @@ impl App {
                             }
                             running = false;
                         } else if let Some(action) = self.ui.smart_content.commit() {
-                            dbg!(&action);
                             use crate::smart_content::SmartContentCommitAction::*;
                             match action {
                                 Copy(text) => {

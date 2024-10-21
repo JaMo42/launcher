@@ -15,6 +15,8 @@ pub struct Entry {
     text: Vec<char>,
     character_positions: Vec<i32>,
     cursor_position: usize,
+    /// If the selection is active, this is one side of it with the cursor
+    /// position being the other, either can be the start or end.
     selection: Option<usize>,
     icon: Svg,
     layout: EntryLayout,
@@ -194,10 +196,23 @@ impl Entry {
     }
 
     pub fn text_input(&mut self, text: &str) {
-        // TODO: since we have math expressions now it would be nice if
-        // parentheses wrapped the selection instead of deleting it
         if self.selection.is_some() {
-            self.delete_selection();
+            if text == "(" || text == ")" {
+                let sel = self.selection.unwrap();
+                let begin = usize::min(sel, self.cursor_position);
+                let end = usize::max(sel, self.cursor_position);
+                self.text.insert(end, ')');
+                self.text.insert(begin, '(');
+                // This makes the cursor stay on the inside of the parentheses
+                // at either end of the selection
+                self.cursor_position += 1;
+                self.selection = Some(sel + 1);
+                self.text_changed(true);
+                self.cursor_changed();
+                return;
+            } else {
+                self.delete_selection();
+            }
         }
         let is_at_end =
             self.text.is_empty() || self.cursor_position == self.character_positions.len() - 1;
