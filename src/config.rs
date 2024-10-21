@@ -1,11 +1,15 @@
 use crate::{
     content::{ContentOptions, UrlMode},
     history::DEFAULT_MAX_SIZE,
+    icon_theme::IconRegistry,
     units::user_currency,
 };
 use serde::Deserialize;
+use std::cell::RefCell;
 
-static mut ICON_THEME: String = String::new();
+thread_local! {
+    pub static ICON_THEME: RefCell<IconRegistry> = Default::default();
+}
 
 #[derive(Deserialize, Default)]
 pub struct ParsedConfig {
@@ -57,10 +61,8 @@ impl Config {
         } else {
             ParsedConfig::default()
         };
-        unsafe {
-            let theme_name = parsed.icon_theme.unwrap_or_else(|| "Papirus".to_string());
-            ICON_THEME = find_icon_theme(theme_name);
-        }
+        let theme_name = parsed.icon_theme.as_deref().unwrap_or("Papirus");
+        ICON_THEME.with_borrow_mut(|t| *t = IconRegistry::new(theme_name).unwrap());
         let url_mode = match parsed.smart_content_urls.as_deref() {
             Some("none") | None => UrlMode::None,
             Some("http") => UrlMode::Http,
@@ -97,26 +99,4 @@ impl Config {
             },
         }
     }
-}
-
-// FIXME: https://specifications.freedesktop.org/icon-theme-spec/latest/
-fn find_icon_theme(name: String) -> String {
-    let home = std::env::var("HOME").unwrap();
-    let directories = [
-        "/usr/share/icons".to_string(),
-        format!("{home}/.local/share/icons"),
-        format!("{home}/.icons"),
-    ];
-    for d in directories {
-        let path = format!("{}/{}", d, name);
-        if std::fs::metadata(&path).is_ok() {
-            println!("Found icon theme: {path}");
-            return path;
-        }
-    }
-    panic!("Theme not found: {name}");
-}
-
-pub fn icon_search_path() -> &'static str {
-    unsafe { ICON_THEME.as_str() }
 }

@@ -1,9 +1,8 @@
+use crate::config::ICON_THEME;
 use cairo::Pattern;
 use gio::{Cancellable, File, MemoryInputStream};
 use glib::Bytes;
 use rsvg::{CairoRenderer, Loader, SvgHandle};
-
-use crate::config::icon_search_path;
 
 pub mod resources {
     pub static SEARCH_ICON: &[u8] = include_bytes!("../res/search.svg");
@@ -55,27 +54,5 @@ impl Svg {
 }
 
 pub fn find_icon(name: &str) -> Option<String> {
-    let base = icon_search_path();
-    if base.is_empty() {
-        return None;
-    }
-    let dirs = [
-        "apps",
-        "places",
-        "devices",
-        "actions",
-        "categories",
-        "mimetypes",
-        "status",
-        "emotes",
-        "intl",
-        "emblems",
-    ];
-    for d in dirs {
-        let pathname = format!("{}/48x48/{}/{}.svg", base, d, name);
-        if std::fs::metadata(&pathname).is_ok() {
-            return Some(pathname);
-        }
-    }
-    None
+    ICON_THEME.with_borrow(|t| t.lookup(name))
 }

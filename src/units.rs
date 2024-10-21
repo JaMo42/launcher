@@ -78,6 +78,7 @@ pub fn user_currency() -> String {
         while s.ends_with(' ') {
             s.pop();
         }
+        println!(" -> {}", s);
         s
     }
 }

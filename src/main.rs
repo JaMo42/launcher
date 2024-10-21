@@ -23,6 +23,7 @@ mod ui;
 mod units;
 mod util;
 mod x;
+mod icon_theme;
 
 use app::App;
 use config::Config;
