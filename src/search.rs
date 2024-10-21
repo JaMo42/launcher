@@ -335,3 +335,18 @@ fn highlight_match(match_str: &str, search: &str) -> String {
     result.extend(match_chars);
     result
 }
+
+pub fn search_path_exact_match(name: &str) -> bool {
+    if let Ok(path) = std::env::var("PATH") {
+        for path in path.split(':') {
+            if let Ok(dir) = std::fs::read_dir(path) {
+                for entry in dir.flatten() {
+                    if entry.file_name().to_str().unwrap() == name {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}

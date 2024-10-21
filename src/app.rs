@@ -4,7 +4,7 @@ use crate::{
     content::{ClassificationError, Content, ContentClassifier},
     history::History,
     input::{self, InputContext},
-    search::{self, sort_search_results, SearchMatch, SearchMatchKind},
+    search::{self, search_path_exact_match, sort_search_results, SearchMatch, SearchMatchKind},
     smart_content::{Action, ReadyContent},
     ui::Ui,
     units::{convert, default_unit_mapping, Unit},
@@ -225,7 +225,32 @@ impl App {
                                     copy(&text);
                                 }
                                 OpenPath(path) => launch_orphan(&format!("xdg-open {path}")),
-                                OpenWeb(url) => launch_orphan(&format!("xdg-open {url}")),
+                                OpenWeb(url) => 'out: {
+                                    // We are a lot looser with URLs than
+                                    // xdg-open (at least in loose URL mod), so
+                                    // we really want to open it manually.
+                                    if let Ok(browser) = std::env::var("BROWSER") {
+                                        launch_orphan(&format!("{browser} {url}"))
+                                    } else if url.starts_with("http") {
+                                        launch_orphan(&format!("xdg-open {url}"))
+                                    } else {
+                                        println!(
+                                            "$BROWSER not set nad URL doesn't look xdg-openable; trying some common browsers"
+                                        );
+                                        for browser in
+                                            ["firefox", "chromium", "google-chrome", "epiphany"]
+                                        {
+                                            println!("  {browser}");
+                                            if search_path_exact_match(browser) {
+                                                println!("   -> Found");
+                                                launch_orphan(&format!("{browser} {url}"));
+                                                break 'out;
+                                            }
+                                        }
+                                        println!("None found, trying xdg-open");
+                                        launch_orphan(&format!("xdg-open {url}"));
+                                    }
+                                }
                                 Run(command) => launch_orphan(&command),
                             }
                             running = false;
