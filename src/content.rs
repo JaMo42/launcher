@@ -255,10 +255,6 @@ impl ContentClassifier {
                 return Ok(Some(Content::BasicExpression(result)));
             }
         }
-        // Remaining content kinds all require a number at the start
-        if !s.starts_with(|c: char| c.is_ascii_digit()) {
-            return Ok(None);
-        }
         fn get_unit(tokens: &mut [Token], index: &mut usize) -> Option<Unit> {
             match tokens.get(*index) {
                 Some(Token::Text(t)) => {
@@ -274,11 +270,14 @@ impl ContentClassifier {
         }
         let mut tokens = lex(s);
         let mut index = 1;
-        // TODO: allow a missing number? `cm to inch` should still display the
-        //       rate
+        let mut no_number = false;
         let num = match tokens.get(0) {
             Some(Token::Number(n)) => *n,
-            _ => return Ok(None),
+            _ => {
+                index = 0;
+                no_number = true;
+                1.0
+            }
         };
         let potentially_have_unit_a = matches!(tokens.get(1), Some(&Token::Text(_)));
         let unit_a = get_unit(&mut tokens, &mut index);
@@ -286,7 +285,7 @@ impl ContentClassifier {
         let mut have_conversion_word = false;
         let unit_b = match tokens.get(index) {
             Some(&Token::Text(t)) if t == "to" || t == "in" || t == "as" => {
-                if t == "in" && tokens.len() == 3 {
+                if t == "in" && tokens.len() == index + 1 {
                     Some(Unit::Distance(Distance::Inch))
                 } else {
                     index += 1;
@@ -308,7 +307,7 @@ impl ContentClassifier {
         {
             return Err(ClassificationError::InvalidToUnit);
         }
-        let expected_token_count = 1
+        let expected_token_count = !no_number as usize
             + unit_a.is_some() as usize
             + unit_b.is_some() as usize
             + have_conversion_word as usize;
