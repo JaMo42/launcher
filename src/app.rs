@@ -110,8 +110,7 @@ impl App {
                 }
             }
             Ok(Some(Content::Path)) => {
-                let path = &s[1..].trim();
-                ReadyContent::Action(Action::Path, "Open", path.to_string())
+                ReadyContent::Action(Action::Path, "Open", s.to_string())
             }
             Ok(Some(Content::URL)) => ReadyContent::Action(Action::Web, "Open", s.to_string()),
             Ok(Some(Content::Command)) => {
@@ -221,6 +220,8 @@ impl App {
         self.ui.set_smart_content(
             self.process_smart_content(self.content_classifier.classify(&text), &text),
         );
+        // Note: this breaks the equivalence check at the start but it doesn't
+        //       really matter.
         let text = if text.starts_with('$') {
             text[1..].trim().to_string()
         } else {
@@ -302,8 +303,8 @@ impl App {
                     launch_orphan(&format!("xdg-open {url}"))
                 } else {
                     println!(
-                                            "$BROWSER not set nad URL doesn't look xdg-openable; trying some common browsers"
-                                        );
+                        "$BROWSER not set nad URL doesn't look xdg-openable; trying some common browsers"
+                    );
                     for browser in ["firefox", "chromium", "google-chrome", "epiphany"] {
                         println!("  {browser}");
                         if search_path_for_exact_match(browser) {
