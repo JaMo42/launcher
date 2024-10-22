@@ -14,7 +14,7 @@ use std::{
         mpsc::{channel, Sender},
         Arc, Mutex,
     },
-    thread,
+    thread::{self, JoinHandle},
 };
 
 #[derive(Copy, Clone)]
@@ -250,15 +250,18 @@ pub fn search(
     // Number of running search functions
     let mut running = 0;
     macro_rules! begin {
-    ($function:ident $(, $opt:expr)*) => {{
-      let my_name = name.to_lowercase ();
-      let my_writer = sender.clone ();
-      thread::spawn (|| $function (my_name, my_writer, $($opt),*));
-      running += 1;
-    }}
-  }
-    begin!(search_path);
-    begin!(search_desktop_entries, cache, previous);
+        ($function:ident $(, $opt:expr)*) => {{
+            let my_name = name.to_lowercase();
+            let my_writer = sender.clone();
+            let handle = thread::spawn(move || $function (my_name, my_writer, $($opt),*));
+            running += 1;
+            handle
+        }}
+    }
+    let threads: [JoinHandle<()>; 2] = [
+        begin!(search_path),
+        begin!(search_desktop_entries, cache, previous),
+    ];
     while running != 0 {
         match receiver.recv() {
             Ok(result_or_finish_token) => {
@@ -272,6 +275,9 @@ pub fn search(
                 eprintln!("Receive error: {error}");
             }
         }
+    }
+    for i in threads {
+        i.join().ok();
     }
     results
 }
