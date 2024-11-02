@@ -497,8 +497,6 @@ pub static ONE_WAY: &[(Unit, Unit)] = {
 pub fn static_unit_from_str(s: &str) -> Option<Unit> {
     use self::{Area::*, Distance::*, Mass::*, Temperature::*, Volume::*};
     use Unit::*;
-    // XXX: this currently allows `kinch`, where the SI prefix would just be
-    //      discarded.
     let candidates: &[(&str, SiPrefix)] =
         if let Some((prefix, len)) = SiPrefix::from_start_of_str(s) {
             &[(s, SiPrefix::None), (&s[len..], prefix)]
@@ -506,23 +504,34 @@ pub fn static_unit_from_str(s: &str) -> Option<Unit> {
             &[(s, SiPrefix::None)]
         };
     for (s, prefix) in candidates.into_iter().cloned() {
+        // Could return a Result instead indicating that this unit doesn't
+        // allow SI prefixes.
+        macro_rules! noprefix {
+            ($unit:expr) => {
+                if prefix == SiPrefix::None {
+                    return Some($unit);
+                } else {
+                    return None;
+                }
+            };
+        }
         match s {
             // Distance
             "m" => return Some(Distance(Meter(prefix))),
             "meter" => return Some(Distance(Meter(prefix))),
             "meters" => return Some(Distance(Meter(prefix))),
-            "in" => return Some(Distance(Inch)),
-            "inch" => return Some(Distance(Inch)),
-            "inches" => return Some(Distance(Inch)),
-            "ft" => return Some(Distance(Feet)),
-            "foot" => return Some(Distance(Feet)),
-            "feet" => return Some(Distance(Feet)),
-            "yd" => return Some(Distance(Yard)),
-            "yard" => return Some(Distance(Yard)),
-            "yards" => return Some(Distance(Yard)),
-            "mi" => return Some(Distance(Mile)),
-            "mile" => return Some(Distance(Mile)),
-            "miles" => return Some(Distance(Mile)),
+            "in" => noprefix!(Distance(Inch)),
+            "inch" => noprefix!(Distance(Inch)),
+            "inches" => noprefix!(Distance(Inch)),
+            "ft" => noprefix!(Distance(Feet)),
+            "foot" => noprefix!(Distance(Feet)),
+            "feet" => noprefix!(Distance(Feet)),
+            "yd" => noprefix!(Distance(Yard)),
+            "yard" => noprefix!(Distance(Yard)),
+            "yards" => noprefix!(Distance(Yard)),
+            "mi" => noprefix!(Distance(Mile)),
+            "mile" => noprefix!(Distance(Mile)),
+            "miles" => noprefix!(Distance(Mile)),
             // Mass
             "g" => return Some(Mass(Gram(prefix))),
             "gram" => return Some(Mass(Gram(prefix))),
@@ -531,60 +540,60 @@ pub fn static_unit_from_str(s: &str) -> Option<Unit> {
             "tons" => return Some(Mass(Gram(SiPrefix::Mega))),
             "tonne" => return Some(Mass(Gram(SiPrefix::Mega))),
             "tonnes" => return Some(Mass(Gram(SiPrefix::Mega))),
-            "oz" => return Some(Mass(Ounce)),
-            "ounce" => return Some(Mass(Ounce)),
-            "ounces" => return Some(Mass(Ounce)),
-            "lb" => return Some(Mass(Pound)),
-            "pound" => return Some(Mass(Pound)),
-            "pounds" => return Some(Mass(Pound)),
-            "st" => return Some(Mass(Stone)),
-            "stone" => return Some(Mass(Stone)),
-            "stones" => return Some(Mass(Stone)),
+            "oz" => noprefix!(Mass(Ounce)),
+            "ounce" => noprefix!(Mass(Ounce)),
+            "ounces" => noprefix!(Mass(Ounce)),
+            "lb" => noprefix!(Mass(Pound)),
+            "pound" => noprefix!(Mass(Pound)),
+            "pounds" => noprefix!(Mass(Pound)),
+            "st" => noprefix!(Mass(Stone)),
+            "stone" => noprefix!(Mass(Stone)),
+            "stones" => noprefix!(Mass(Stone)),
             // Area
             "m2" => return Some(Area(SquareMeter(prefix))),
             "meter2" => return Some(Area(SquareMeter(prefix))),
-            "in2" => return Some(Area(SquareInch)),
-            "inch2" => return Some(Area(SquareInch)),
-            "ft2" => return Some(Area(SquareFeet)),
-            "feet2" => return Some(Area(SquareFeet)),
-            "yd2" => return Some(Area(SquareYard)),
-            "yard2" => return Some(Area(SquareYard)),
-            "mi2" => return Some(Area(SquareMile)),
-            "mile2" => return Some(Area(SquareMile)),
-            "miles2" => return Some(Area(SquareMile)),
-            "ha" => return Some(Area(Hectare)),
-            "hectare" => return Some(Area(Hectare)),
-            "ac" => return Some(Area(Acre)),
-            "acre" => return Some(Area(Acre)),
+            "in2" => noprefix!(Area(SquareInch)),
+            "inch2" => noprefix!(Area(SquareInch)),
+            "ft2" => noprefix!(Area(SquareFeet)),
+            "feet2" => noprefix!(Area(SquareFeet)),
+            "yd2" => noprefix!(Area(SquareYard)),
+            "yard2" => noprefix!(Area(SquareYard)),
+            "mi2" => noprefix!(Area(SquareMile)),
+            "mile2" => noprefix!(Area(SquareMile)),
+            "miles2" => noprefix!(Area(SquareMile)),
+            "ha" => noprefix!(Area(Hectare)),
+            "hectare" => noprefix!(Area(Hectare)),
+            "ac" => noprefix!(Area(Acre)),
+            "acre" => noprefix!(Area(Acre)),
             // Volume
             "l" => return Some(Volume(Liter(prefix))),
             "liter" => return Some(Volume(Liter(prefix))),
             "liters" => return Some(Volume(Liter(prefix))),
-            "gal" => return Some(Volume(Gallon)),
-            "gallon" => return Some(Volume(Gallon)),
-            "gallons" => return Some(Volume(Gallon)),
-            "qt" => return Some(Volume(Quart)),
-            "quart" => return Some(Volume(Quart)),
-            "quarts" => return Some(Volume(Quart)),
-            "pt" => return Some(Volume(Pint)),
-            "pint" => return Some(Volume(Pint)),
-            "pints" => return Some(Volume(Pint)),
-            "cup" => return Some(Volume(Cup)),
-            "cups" => return Some(Volume(Cup)),
+            "gal" => noprefix!(Volume(Gallon)),
+            "gallon" => noprefix!(Volume(Gallon)),
+            "gallons" => noprefix!(Volume(Gallon)),
+            "qt" => noprefix!(Volume(Quart)),
+            "quart" => noprefix!(Volume(Quart)),
+            "quarts" => noprefix!(Volume(Quart)),
+            "pt" => noprefix!(Volume(Pint)),
+            "pint" => noprefix!(Volume(Pint)),
+            "pints" => noprefix!(Volume(Pint)),
+            "cup" => noprefix!(Volume(Cup)),
+            "cups" => noprefix!(Volume(Cup)),
             // XXX: should be `fl oz`, but don't allow spaces
-            "floz" => return Some(Volume(FluidOunce)),
-            "fluidounce" => return Some(Volume(FluidOunce)),
-            "fluidounces" => return Some(Volume(FluidOunce)),
-            "tbsp" => return Some(Volume(Tablespoon)),
-            "tablespoon" => return Some(Volume(Tablespoon)),
-            "tablespoons" => return Some(Volume(Tablespoon)),
-            "tsp" => return Some(Volume(Teaspoon)),
-            "teaspoon" => return Some(Volume(Teaspoon)),
-            "teaspoons" => return Some(Volume(Teaspoon)),
+            "floz" => noprefix!(Volume(FluidOunce)),
+            "fluidounce" => noprefix!(Volume(FluidOunce)),
+            "fluidounces" => noprefix!(Volume(FluidOunce)),
+            "tbsp" => noprefix!(Volume(Tablespoon)),
+            "tablespoon" => noprefix!(Volume(Tablespoon)),
+            "tablespoons" => noprefix!(Volume(Tablespoon)),
+            "tsp" => noprefix!(Volume(Teaspoon)),
+            "teaspoon" => noprefix!(Volume(Teaspoon)),
+            "teaspoons" => noprefix!(Volume(Teaspoon)),
             // Temperature
-            "C" => return Some(Temperature(Celsius)),
-            "F" => return Some(Temperature(Fahrenheit)),
-            "K" => return Some(Temperature(Kelvin)),
+            "C" => noprefix!(Temperature(Celsius)),
+            "F" => noprefix!(Temperature(Fahrenheit)),
+            "K" => noprefix!(Temperature(Kelvin)),
 
             _ => {}
         }
