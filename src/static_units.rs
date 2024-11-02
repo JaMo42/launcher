@@ -212,6 +212,7 @@ impl std::fmt::Display for Mass {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         use Mass::*;
         match self {
+            Gram(SiPrefix::Mega) => write!(f, "ton"),
             Gram(prefix) => write!(f, "{}g", prefix),
             Ounce => write!(f, "oz"),
             Pound => write!(f, "lb"),
@@ -475,6 +476,7 @@ pub static ONE_WAY: &[(Unit, Unit)] = {
         (Distance(Meter(Milli)), Distance(Inch)),
         // Mass
         (Mass(Stone), Mass(Gram(Kilo))),
+        (Mass(Gram(Mega)), Mass(Pound)),
         // Area
         (Area(SquareYard), Area(SquareMeter(None))),
         (Area(Hectare), Area(SquareMeter(Kilo))),
