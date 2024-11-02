@@ -128,7 +128,7 @@ mod currency_cache {
             let current_time = current_time.naive_utc().date();
             let cache_time = read_to_string(path("timestamp")).ok()?;
             let cache_time: NaiveDate = cache_time.parse().ok()?;
-            Some(current_time.day() - cache_time.day() == 0)
+            Some(current_time.day() as i32 - cache_time.day() as i32 == 0)
         }
         falliable().unwrap_or(false)
     }
