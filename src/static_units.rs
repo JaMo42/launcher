@@ -499,13 +499,13 @@ pub fn static_unit_from_str(s: &str) -> Option<Unit> {
     use Unit::*;
     // XXX: this currently allows `kinch`, where the SI prefix would just be
     //      discarded.
-    let (ss, prefix): (&[&str], SiPrefix) =
+    let candidates: &[(&str, SiPrefix)] =
         if let Some((prefix, len)) = SiPrefix::from_start_of_str(s) {
-            (&[s, &s[len..]], prefix)
+            &[(s, SiPrefix::None), (&s[len..], prefix)]
         } else {
-            (&[s], SiPrefix::None)
+            &[(s, SiPrefix::None)]
         };
-    for s in ss.into_iter().cloned() {
+    for (s, prefix) in candidates.into_iter().cloned() {
         match s {
             // Distance
             "m" => return Some(Distance(Meter(prefix))),
